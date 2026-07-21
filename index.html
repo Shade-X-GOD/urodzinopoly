@@ -3,137 +3,82 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>urodzinopoly — demo</title>
+  <title>urodzinopoly — realistic board</title>
   <meta name="theme-color" content="#ffffff">
   <style>
-    :root{
-      --bg:#f2efe9;
-      --board-size:calc(min(92vw,92vh));
-      --accent:#222;
-      --primary:#0066cc;
-      --card-bg:#fff;
-    }
+    :root{--bg:#f2efe9;--board-size:calc(min(92vw,92vh));--primary:#0066cc}
     html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
     .wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
 
-    /* container that holds board and applies perspective for angled view */
-    .board-area{width:var(--board-size);height:var(--board-size);position:relative;box-shadow:0 14px 40px rgba(0,0,0,0.18);border-radius:12px;overflow:visible;perspective:1100px;-webkit-perspective:1100px}
+    .board-area{width:var(--board-size);height:var(--board-size);position:relative;perspective:1100px;-webkit-perspective:1100px}
+    .board-3d{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 420ms ease;transform-origin:center center}
+    .board-3d.tilted{transform:rotateX(16deg) rotateZ(-8deg) translateZ(0)}
 
-    .board-3d{position:absolute;inset:0;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform 420ms ease;transform-origin:center center;}
+    /* real board sprite as background image */
+    #boardVisual{position:absolute;inset:6%;width:88%;height:88%;left:6%;top:6%;border-radius:8px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,0.25)}
+    #boardVisual img{width:100%;height:100%;object-fit:cover;display:block}
 
-    /* subtle angled camera (slightly tilted toward the viewer) */
-    .board-3d.tilted{transform:rotateX(16deg) rotateZ(-8deg) translateZ(0);}
-
-    /* realistic board artwork area (SVG) */
-    #boardVisual{position:absolute;inset:6%;width:88%;height:88%;left:6%;top:6%;border-radius:8px;overflow:hidden;box-shadow:inset 0 2px 8px rgba(0,0,0,0.06);}
-    /* overlay canvas where tiles and token live (keeps interactive elements above art) */
+    /* overlay for interactive elements placed above the image */
     #board{position:absolute;inset:6%;width:88%;height:88%;left:6%;top:6%;box-sizing:border-box;pointer-events:none}
 
-    .tile{position:absolute;width:calc(100% / 11);height:calc(100% / 11);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:10px;color:#111;pointer-events:auto}
+    .tile{position:absolute;width:calc(100% / 11);height:calc(100% / 11);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:10px;color:#111;pointer-events:auto;transform:translate(-50%,-50%)}
     .tile .label{pointer-events:none;text-align:center;font-size:10px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,0.5)}
 
     .tile.start{background:linear-gradient(90deg,#fff6a8,#ffd54a);border-radius:4px;color:#000}
     .tile.community{background:#fff;border-radius:4px;color:#000}
 
-    .token{position:absolute;width:28px;height:28px;border-radius:50%;background:crimson;border:3px solid #fff;box-shadow:0 8px 20px rgba(0,0,0,0.28);transform:translate(-50%,-50%);transition:left 400ms linear, top 400ms linear;pointer-events:none}
+    /* realistic token as image */
+    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-60%);transition:left 340ms linear, top 340ms linear;pointer-events:none;z-index:6}
+    #token img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,0.35));display:block}
 
+    /* stack positioned on board (will be moved by JS to the community tile) */
+    .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
+    .card{width:72px;height:96px;border-radius:8px;background:linear-gradient(180deg,#fff,#f9f9fb);box-shadow:0 10px 26px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;font-weight:700;color:#111}
+    .card.stack-bottom{position:absolute;transform:translateY(6px) rotate(-2deg);opacity:.9}
+    .card.stack-top{position:absolute;transform:translateY(0) rotate(0deg)}
+
+    /* controls */
     .controls{margin-top:14px;display:flex;gap:12px;align-items:center}
     button{padding:10px 16px;border-radius:10px;border:0;background:var(--primary);color:#fff;font-weight:600;font-size:16px;box-shadow:0 6px 14px rgba(0,0,0,0.12);-webkit-tap-highlight-color:transparent}
     button:disabled{opacity:.5}
 
     .dice{display:flex;gap:8px}
-    .die{width:56px;height:56px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 16px rgba(0,0,0,0.12)}
+    .die{width:56px;height:56px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 16px rgba(0,0,0,0.12);will-change:transform}
 
-    .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center}
-    .card{width:72px;height:96px;border-radius:8px;background:linear-gradient(180deg,#fff,#f9f9fb);box-shadow:0 8px 18px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;font-weight:700;color:#111;transform-origin:center;}
-    .card.stack-bottom{position:absolute;transform:translateY(6px) rotate(-2deg);opacity:.9}
-    .card.stack-top{position:absolute;transform:translateY(0) rotate(0deg);}
-
-    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px);}
-    .card-preview{width:86%;max-width:360px;background:var(--card-bg);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.3);}    
-
-    /* safe-area for iPhone notch */
-    .wrap{padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));}
-
-    @media (max-width:420px){
-      .die{width:44px;height:44px;font-size:18px}
-      .token{width:22px;height:22px}
-      button{padding:10px 14px;font-size:15px}
+    /* toss animation */
+    .die.throw{animation: toss 900ms cubic-bezier(.22,.9,.3,1);}
+    @keyframes toss{
+      0% { transform: translateY(0) rotate(0deg) rotateX(0deg); }
+      30% { transform: translateY(-140px) rotate(720deg) rotateX(360deg); }
+      60% { transform: translateY(-40px) rotate(1080deg) rotateX(720deg); }
+      100% { transform: translateY(0) rotate(1440deg) rotateX(900deg); }
     }
+
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px)}
+    .card-preview{width:86%;max-width:360px;background:#fff;padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.3)}
+
+    @media (max-width:420px){ .die{width:44px;height:44px;font-size:18px} #token{width:36px;height:36px} button{padding:10px 14px;font-size:15px} }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="board-area">
       <div class="board-3d tilted" id="board3d">
-        <div id="boardVisual" aria-hidden="true">
-          <!-- Inline SVG art representing a board — stylized (not using any copyrighted imagery) -->
-          <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">
-            <defs>
-              <linearGradient id="gEdge" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.95"/><stop offset="1" stop-color="#eee"/></linearGradient>
-            </defs>
-            <rect x="0" y="0" width="1000" height="1000" fill="#f6efe4" rx="20" ry="20"/>
-
-            <!-- outer border -->
-            <rect x="80" y="80" width="840" height="840" fill="#ffffff" stroke="#c9b99b" stroke-width="12" rx="12"/>
-
-            <!-- inner play area (green center) -->
-            <rect x="160" y="160" width="680" height="680" fill="#ced8c8" rx="8"/>
-
-            <!-- corners -->
-            <rect x="80" y="80" width="160" height="160" fill="#fff9e6" stroke="#c9b99b" stroke-width="4"/>
-            <rect x="760" y="80" width="160" height="160" fill="#fff9e6" stroke="#c9b99b" stroke-width="4"/>
-            <rect x="80" y="760" width="160" height="160" fill="#fff9e6" stroke="#c9b99b" stroke-width="4"/>
-            <rect x="760" y="760" width="160" height="160" fill="#fff9e6" stroke="#c9b99b" stroke-width="4"/>
-
-            <!-- property stripes along edges (stylized, not exact) -->
-            <!-- bottom edge (right->left) -->
-            <g>
-              <rect x="240" y="760" width="60" height="160" fill="#d32f2f"/>
-              <rect x="320" y="760" width="60" height="160" fill="#d32f2f"/>
-              <rect x="400" y="760" width="60" height="160" fill="#ffa000"/>
-              <rect x="480" y="760" width="60" height="160" fill="#ffa000"/>
-              <rect x="560" y="760" width="60" height="160" fill="#7b1fa2"/>
-              <rect x="640" y="760" width="60" height="160" fill="#7b1fa2"/>
-            </g>
-            <!-- left edge (bottom->top) -->
-            <g>
-              <rect x="80" y="560" width="160" height="60" fill="#4caf50"/>
-              <rect x="80" y="480" width="160" height="60" fill="#4caf50"/>
-              <rect x="80" y="400" width="160" height="60" fill="#2196f3"/>
-              <rect x="80" y="320" width="160" height="60" fill="#2196f3"/>
-            </g>
-            <!-- top edge (left->right) -->
-            <g>
-              <rect x="240" y="80" width="60" height="160" fill="#f4511e"/>
-              <rect x="320" y="80" width="60" height="160" fill="#f4511e"/>
-              <rect x="400" y="80" width="60" height="160" fill="#8bc34a"/>
-              <rect x="480" y="80" width="60" height="160" fill="#8bc34a"/>
-            </g>
-            <!-- right edge (top->bottom) -->
-            <g>
-              <rect x="760" y="240" width="160" height="60" fill="#00bcd4"/>
-              <rect x="760" y="320" width="160" height="60" fill="#00bcd4"/>
-              <rect x="760" y="400" width="160" height="60" fill="#9e9d24"/>
-              <rect x="760" y="480" width="160" height="60" fill="#9e9d24"/>
-            </g>
-
-            <!-- central logo placeholder -->
-            <g transform="translate(500,500)">
-              <circle r="120" fill="#fff" stroke="#d6c6a6" stroke-width="8"/>
-              <text x="0" y="12" font-family="sans-serif" font-size="40" text-anchor="middle" fill="#5d4037">Urodzinopoly</text>
-            </g>
-          </svg>
+        <div id="boardVisual">
+          <!-- Use the board sprite placed at assets/board.jpg -->
+          <img id="boardImage" src="assets/board.jpg" alt="Board sprite (assets/board.jpg)">
         </div>
 
         <div id="board" aria-hidden="false"></div>
 
+        <!-- card stack will be positioned by JS near community square -->
         <div class="stack" id="community-stack" aria-hidden="true">
           <div class="card stack-bottom"></div>
           <div class="card stack-top">?</div>
         </div>
 
-        <div id="token" class="token" aria-hidden="true"></div>
+        <!-- token uses external cat token image provided by user -->
+        <div id="token" aria-hidden="true"><img id="tokenImg" src="https://i.ebayimg.com/images/g/VuoAAOSwDyVnPh7B/s-l1600.webp" alt="Cat token"></div>
       </div>
     </div>
 
@@ -152,7 +97,7 @@
   <script>
     (function(){
       const boardEl = document.getElementById('board');
-      const board3d = document.getElementById('board3d');
+      const boardImg = document.getElementById('boardImage');
       const tokenEl = document.getElementById('token');
       const rollBtn = document.getElementById('rollBtn');
       const pickBtn = document.getElementById('pickBtn');
@@ -164,9 +109,9 @@
       const TILE_COUNT = 40;
       const tiles = [];
       const tileCenters = [];
-      const communityIndex = 2;
+      const communityIndex = 2; // community chest near GO (as earlier)
       const startIndex = 0;
-      let currentPos = 36;
+      let currentPos = 36; // so first roll passes GO
       let firstRollDone = false;
 
       function createTiles(){
@@ -177,23 +122,10 @@
           const side = Math.floor(i / 10);
           const posOnSide = i % 10;
           let x,y;
-          if(side === 0){ // bottom edge, right->left
-            const t = posOnSide/9;
-            x = 1 - edgePad - inner * t;
-            y = 1 - edgePad;
-          } else if(side === 1){ // left edge, bottom->top
-            const t = posOnSide/9;
-            x = edgePad;
-            y = 1 - edgePad - inner * t;
-          } else if(side === 2){ // top edge, left->right
-            const t = posOnSide/9;
-            x = edgePad + inner * t;
-            y = edgePad;
-          } else { // right edge, top->bottom
-            const t = posOnSide/9;
-            x = 1 - edgePad;
-            y = edgePad + inner * t;
-          }
+          if(side === 0){ const t = posOnSide/9; x = 1 - edgePad - inner * t; y = 1 - edgePad; }
+          else if(side === 1){ const t = posOnSide/9; x = edgePad; y = 1 - edgePad - inner * t; }
+          else if(side === 2){ const t = posOnSide/9; x = edgePad + inner * t; y = edgePad; }
+          else { const t = posOnSide/9; x = 1 - edgePad; y = edgePad + inner * t; }
           positions.push([x*100+'%', y*100+'%']);
         }
 
@@ -204,17 +136,16 @@
           el.className = 'tile';
           el.style.left = positions[i][0];
           el.style.top = positions[i][1];
-          el.style.transform = 'translate(-50%,-50%)';
           const label = document.createElement('div'); label.className='label';
           if(i===startIndex){ el.classList.add('start'); label.textContent='GO'; }
           else if(i===communityIndex){ el.classList.add('community'); label.textContent='Community Chest'; }
-          else { label.textContent = i; }
+          else { label.textContent = ''; }
           el.appendChild(label);
           boardEl.appendChild(el);
           tiles.push(el);
         }
 
-        // compute centers (use boardVisual bounding box as reference so transformed 3D still aligns)
+        // compute centers
         const bb = boardEl.getBoundingClientRect();
         tiles.forEach((el)=>{
           const rect = el.getBoundingClientRect();
@@ -223,11 +154,13 @@
           tileCenters.push({x:cx,y:cy});
         });
 
-        // place stack near community tile
+        // position stack directly on the community tile (like real board)
         const communityRect = tiles[communityIndex].getBoundingClientRect();
         const bbb = boardEl.getBoundingClientRect();
-        stackEl.style.left = (communityRect.left - bbb.left + communityRect.width*0.5) + 'px';
-        stackEl.style.top = (communityRect.top - bbb.top + communityRect.height*0.5 - 20) + 'px';
+        const left = communityRect.left - bbb.left + communityRect.width*0.5;
+        const top = communityRect.top - bbb.top + communityRect.height*0.5;
+        stackEl.style.left = left + 'px';
+        stackEl.style.top = (top - communityRect.height*0.12) + 'px'; // slight offset so stack sits inside tile
       }
 
       function placeToken(pos){
@@ -251,31 +184,69 @@
         step();
       }
 
-      let resizeTimer;
-      function rebuild(){ createTiles(); placeToken(currentPos); }
-      window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer = setTimeout(rebuild,120); });
-
-      function showDice(a,b){ die1.textContent = a; die2.textContent = b; }
+      // Dice toss animation: add class .throw which runs keyframes; set numbers after animation
       function animateDice(finalA, finalB, duration=900){
-        const frames = Math.max(6, Math.floor(duration/80));
-        let count=0; const iv = setInterval(()=>{ count++; die1.textContent = Math.floor(Math.random()*6)+1; die2.textContent = Math.floor(Math.random()*6)+1; if(count>=frames){ clearInterval(iv); showDice(finalA,finalB); } },80);
+        die1.classList.remove('throw'); die2.classList.remove('throw');
+        // force reflow
+        void die1.offsetWidth; void die2.offsetWidth;
+        die1.classList.add('throw'); die2.classList.add('throw');
+        // during animation keep numbers blank or show rolling glyph
+        die1.textContent = '...'; die2.textContent = '...';
+        setTimeout(()=>{ die1.classList.remove('throw'); die2.classList.remove('throw'); die1.textContent = finalA; die2.textContent = finalB; }, duration);
       }
 
-      function openModal(title,body){ modalRoot.innerHTML=''; const modal = document.createElement('div'); modal.className='modal'; const card = document.createElement('div'); card.className='card-preview'; const h=document.createElement('h3'); h.textContent=title; const p=document.createElement('p'); p.textContent=body; const btn=document.createElement('button'); btn.textContent='Close'; btn.style.marginTop='12px'; btn.addEventListener('click', ()=>{ modalRoot.style.display='none'; modalRoot.innerHTML=''; }); card.appendChild(h); card.appendChild(p); card.appendChild(btn); modal.appendChild(card); modalRoot.appendChild(modal); modalRoot.style.display='block'; }
-
-      function pickCardAnimation(cb){ const top = stackEl.querySelector('.stack-top'); top.style.transition='transform 420ms cubic-bezier(.2,.9,.2,1), opacity 420ms'; top.style.transform='translateY(-120px) rotate(-6deg) scale(1.02)'; top.style.opacity='0.98'; setTimeout(()=>{ openModal('Community Chest','You have found a Community Chest card. (Placeholder)'); top.style.transition='transform 320ms ease, opacity 320ms'; top.style.transform='translateY(0) rotate(0)'; top.style.opacity='1'; if(cb) cb(); },450); }
-
-      function init(){ createTiles(); tokenEl.style.display='block'; tokenEl.setAttribute('aria-hidden','false'); placeToken(currentPos);
-        rollBtn.addEventListener('click', onRoll);
-        pickBtn.addEventListener('click', ()=>{ pickBtn.disabled=true; pickCardAnimation(()=>{ pickBtn.disabled=false; pickBtn.style.display='none'; }); });
+      function openModal(title,body){
+        modalRoot.innerHTML = '';
+        const modal = document.createElement('div'); modal.className='modal';
+        const card = document.createElement('div'); card.className='card-preview';
+        const h = document.createElement('h3'); h.textContent = title;
+        const p = document.createElement('p'); p.textContent = body;
+        const btn = document.createElement('button'); btn.textContent = 'Close'; btn.style.marginTop='12px';
+        btn.addEventListener('click', ()=>{ modalRoot.style.display='none'; modalRoot.innerHTML=''; });
+        card.appendChild(h); card.appendChild(p); card.appendChild(btn); modal.appendChild(card); modalRoot.appendChild(modal); modalRoot.style.display='block';
       }
 
-      function onRoll(){ rollBtn.disabled=true; pickBtn.style.display='none'; let a,b,sum; if(!firstRollDone){ const need = ((communityIndex - currentPos) + TILE_COUNT) % TILE_COUNT; sum = Math.max(2, Math.min(12, need)); a = Math.min(6, sum-1); b = sum - a; firstRollDone = true; } else { a = Math.floor(Math.random()*6)+1; b = Math.floor(Math.random()*6)+1; sum = a + b; }
+      function pickCardAnimation(cb){
+        const top = stackEl.querySelector('.stack-top');
+        top.style.transition='transform 420ms cubic-bezier(.2,.9,.2,1), opacity 420ms';
+        top.style.transform='translateY(-140px) rotate(-6deg) scale(1.04)';
+        top.style.opacity='0.98';
+        setTimeout(()=>{
+          openModal('Community Chest','You have drawn a Community Chest card (placeholder).');
+          top.style.transition='transform 320ms ease, opacity 320ms';
+          top.style.transform='translateY(0) rotate(0)';
+          top.style.opacity='1';
+          if(cb) cb();
+        },460);
+      }
+
+      function onRoll(){
+        rollBtn.disabled=true; pickBtn.style.display='none';
+        let a,b,sum;
+        if(!firstRollDone){
+          const need = ((communityIndex - currentPos) + TILE_COUNT) % TILE_COUNT;
+          sum = Math.max(2, Math.min(12, need));
+          a = Math.min(6, sum-1); b = sum - a; firstRollDone = true;
+        } else { a = Math.floor(Math.random()*6)+1; b = Math.floor(Math.random()*6)+1; sum = a + b; }
+
         animateDice(a,b,900);
-        setTimeout(()=>{ const start = currentPos; animateMovement(start, sum, ()=>{ if(start + sum >= TILE_COUNT){ const startTile = tiles[startIndex]; startTile.style.boxShadow = '0 0 0 6px rgba(255,240,160,0.8)'; setTimeout(()=>startTile.style.boxShadow='',520); } if(currentPos === communityIndex){ pickBtn.style.display='inline-block'; pickBtn.disabled=false; } rollBtn.disabled=false; }); },920);
+
+        setTimeout(()=>{
+          const start = currentPos;
+          animateMovement(start, sum, ()=>{
+            if(start + sum >= TILE_COUNT){ const startTile = tiles[startIndex]; startTile.style.boxShadow = '0 0 0 6px rgba(255,240,160,0.8)'; setTimeout(()=>startTile.style.boxShadow='',520); }
+            if(currentPos === communityIndex){ pickBtn.style.display='inline-block'; pickBtn.disabled=false; }
+            rollBtn.disabled=false;
+          });
+        },920);
       }
 
-      window.addEventListener('load', ()=>{ setTimeout(init,80); });
+      // init once board image loads (the user will place assets/board.jpg in repo)
+      function init(){ createTiles(); tokenEl.style.display='block'; tokenEl.setAttribute('aria-hidden','false'); placeToken(currentPos); rollBtn.addEventListener('click', onRoll); pickBtn.addEventListener('click', ()=>{ pickBtn.disabled=true; pickCardAnimation(()=>{ pickBtn.disabled=false; pickBtn.style.display='none'; }); }); }
+
+      boardImg.addEventListener('load', ()=>{ setTimeout(init,80); }); if(boardImg.complete) setTimeout(init,80);
+      window.addEventListener('resize', ()=>{ clearTimeout(window._rT); window._rT = setTimeout(()=>{ createTiles(); placeToken(currentPos); },120); });
+
     })();
   </script>
 </body>
