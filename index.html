@@ -28,8 +28,10 @@
     .tile.community{background:#fff;border-radius:4px;color:#000}
 
     /* realistic token as image */
-    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-60%);transition:left 340ms linear, top 340ms linear;pointer-events:none;z-index:6}
+    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 320ms linear, top 320ms linear, transform 220ms ease;pointer-events:none;z-index:6}
     #token img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,0.35));display:block}
+    /* hover/elevation state while moving */
+    #token.hover{transform:translate(-50%,-60%) translateY(-14px) scale(1.06)}
 
     /* stack positioned on board (will be moved by JS to the community tile) */
     .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
@@ -46,7 +48,7 @@
     .die{width:56px;height:56px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 16px rgba(0,0,0,0.12);will-change:transform}
 
     /* toss animation */
-    .die.throw{animation: toss 900ms cubic-bezier(.22,.9,.3,1);}
+    .die.throw{animation: toss 900ms cubic-bezier(.22,.9,.3,1)}
     @keyframes toss{
       0% { transform: translateY(0) rotate(0deg) rotateX(0deg); }
       30% { transform: translateY(-140px) rotate(720deg) rotateX(360deg); }
@@ -77,7 +79,7 @@
           <div class="card stack-top">?</div>
         </div>
 
-        <!-- token uses external cat token image provided by user -->
+        <!-- token uses external cat token image provided by user; consider replacing with assets/token.png -->
         <div id="token" aria-hidden="true"><img id="tokenImg" src="https://i.ebayimg.com/images/g/VuoAAOSwDyVnPh7B/s-l1600.webp" alt="Cat token"></div>
       </div>
     </div>
@@ -136,6 +138,7 @@
           el.className = 'tile';
           el.style.left = positions[i][0];
           el.style.top = positions[i][1];
+          el.style.transform = 'translate(-50%,-50%)';
           const label = document.createElement('div'); label.className='label';
           if(i===startIndex){ el.classList.add('start'); label.textContent='GO'; }
           else if(i===communityIndex){ el.classList.add('community'); label.textContent='Community Chest'; }
@@ -163,19 +166,32 @@
         stackEl.style.top = (top - communityRect.height*0.12) + 'px'; // slight offset so stack sits inside tile
       }
 
+      function adjustedCenter(center){
+        // nudge the token slightly toward the board center so it sits "inside" perimeter tiles
+        const bb = boardEl.getBoundingClientRect();
+        const boardCenter = {x: bb.width/2, y: bb.height/2};
+        const dx = center.x - boardCenter.x;
+        const dy = center.y - boardCenter.y;
+        const factor = 0.18; // how much to move toward center (0..1)
+        return { x: center.x - dx * factor, y: center.y - dy * factor };
+      }
+
       function placeToken(pos){
         const idx = ((pos % TILE_COUNT) + TILE_COUNT) % TILE_COUNT;
         const center = tileCenters[idx];
         if(!center) return;
-        tokenEl.style.left = center.x + 'px';
-        tokenEl.style.top = center.y + 'px';
+        const ac = adjustedCenter(center);
+        // move token to adjusted center
+        tokenEl.style.left = ac.x + 'px';
+        tokenEl.style.top = ac.y + 'px';
       }
 
       function animateMovement(start, steps, cb){
         let i=0;
-        tokenEl.style.transition = 'left 300ms linear, top 300ms linear';
+        // add hover class to give illusion of elevation while moving
+        tokenEl.classList.add('hover');
         function step(){
-          if(i>=steps){ tokenEl.style.transition=''; if(cb) cb(); return; }
+          if(i>=steps){ tokenEl.classList.remove('hover'); if(cb) cb(); return; }
           currentPos = (start + i + 1) % TILE_COUNT;
           placeToken(currentPos);
           i++;
@@ -190,14 +206,13 @@
         // force reflow
         void die1.offsetWidth; void die2.offsetWidth;
         die1.classList.add('throw'); die2.classList.add('throw');
-        // during animation keep numbers blank or show rolling glyph
         die1.textContent = '...'; die2.textContent = '...';
         setTimeout(()=>{ die1.classList.remove('throw'); die2.classList.remove('throw'); die1.textContent = finalA; die2.textContent = finalB; }, duration);
       }
 
       function openModal(title,body){
         modalRoot.innerHTML = '';
-        const modal = document.createElement('div'); modal.className='modal';
+        const modal = document.createElement('div'); modal.className = 'modal';
         const card = document.createElement('div'); card.className='card-preview';
         const h = document.createElement('h3'); h.textContent = title;
         const p = document.createElement('p'); p.textContent = body;
