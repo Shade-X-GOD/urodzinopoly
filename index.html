@@ -28,10 +28,10 @@
     .tile.community{background:#fff;border-radius:4px;color:#000}
 
     /* realistic token as image */
-    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 260ms cubic-bezier(.2,.9,.2,1), top 260ms cubic-bezier(.2,.9,.2,1), transform 160ms ease;pointer-events:none;z-index:6}
-    #token img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,0.35));display:block}
-    /* hover/elevation state while moving (lower hover) */
-    #token.hover{transform:translate(-50%,-50%) translateY(-8px) scale(1.03)}
+    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 220ms cubic-bezier(.2,.9,.2,1), top 220ms cubic-bezier(.2,.9,.2,1), transform 140ms ease;pointer-events:none;z-index:6}
+    #token img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 12px rgba(0,0,0,0.32));display:block}
+    /* hover/elevation state while moving (lower lift) */
+    #token.hover{transform:translate(-50%,-50%) translateY(-6px) scale(1.03)}
 
     /* stack positioned on board (will be moved by JS to the community tile) */
     .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
@@ -168,6 +168,7 @@
         stackEl.style.top = (top - communityRect.height*0.12) + 'px';
       }
 
+      // helper: put token exactly at tile center
       function placeTokenAtCenter(pos){
         const idx = ((pos % TILE_COUNT) + TILE_COUNT) % TILE_COUNT;
         const center = tileCenters[idx];
@@ -176,41 +177,58 @@
         tokenEl.style.top = center.y + 'px';
       }
 
-      function placeTokenParallel(pos){
-        // move token parallel to edge: for each side, lock one axis to the tile center's axis
+      // compute a baseline-aligned target for a tile so the token travels parallel to the edge
+      function getParallelTarget(pos){
         const idx = ((pos % TILE_COUNT) + TILE_COUNT) % TILE_COUNT;
         const center = tileCenters[idx];
-        const side = tileSides[idx];
-        if(!center) return;
-        const bb = boardEl.getBoundingClientRect();
-        // compute reference axis values per side
-        // bottom (0) -> keep y constant (bottom row y), change x
-        // left (1) -> keep x constant (left col x), change y
-        // top (2) -> keep y constant (top row y)
-        // right (3) -> keep x constant (right col x)
-        let targetX = center.x, targetY = center.y;
-        if(side === 0 || side === 2){
-          // ensure y equals the side's baseline (average of tiles on that side)
-          // compute baseline from any tile on that side (use index of corner positions)
-          // baseline: take the first tile on that side
-          // but simpler: compute median y of tiles on that side
+        const side = tileSides[idx]; // 0 bottom, 1 left, 2 top, 3 right
+        if(!center) return null;
+
+        // compute baseline (average axis for the side)
+        if(side === 0 || side === 2){ // bottom or top -> keep y equal to side baseline, x is tile center.x
           const ys = tileCenters.filter((_,i)=>tileSides[i]===side).map(c=>c.y);
           const baselineY = ys.reduce((s,v)=>s+v,0)/ys.length;
-          targetY = baselineY;
-        } else {
+          return { x: center.x, y: baselineY };
+        } else { // left or right -> keep x equal to side baseline, y is tile center.y
           const xs = tileCenters.filter((_,i)=>tileSides[i]===side).map(c=>c.x);
           const baselineX = xs.reduce((s,v)=>s+v,0)/xs.length;
-          targetX = baselineX;
+          return { x: baselineX, y: center.y };
         }
-        tokenEl.style.left = targetX + 'px';
-        tokenEl.style.top = targetY + 'px';
       }
 
-      function animateMovement(start, steps, cb){
-        let i=0;
-        tokenEl.classList.add('hover');
+      // animate from current position to target in small steps (keeps movement parallel)
+      function animateTo(target, duration = 240, cb){
+        // read current computed px values
+        const startRect = tokenEl.getBoundingClientRect();
+        const parentRect = boardEl.getBoundingClientRect();
+        const start = { x: startRect.left + startRect.width/2 - parentRect.left, y: startRect.top + startRect.height/2 - parentRect.top };
+        const dx = target.x - start.x;
+        const dy = target.y - start.y;
+        const steps = Math.max(1, Math.round(duration / 16)); // approx 60fps frames
+        let frame = 0;
+
         function step(){
-          if(i>=steps){
+          frame++;
+          const t = frame / steps;
+          // ease (easeOutQuad)
+          const eased = 1 - (1 - t) * (1 - t);
+          const px = start.x + dx * eased;
+          const py = start.y + dy * eased;
+          tokenEl.style.left = px + 'px';
+          tokenEl.style.top = py + 'px';
+          if(frame < steps) requestAnimationFrame(step);
+          else { if(cb) cb(); }
+        }
+        requestAnimationFrame(step);
+      }
+
+      // main movement: for each step, move parallel to the side baseline, then finalize at center
+      function animateMovement(start, steps, cb){
+        let i = 0;
+        tokenEl.classList.add('hover');
+
+        function nextStep(){
+          if(i >= steps){
             // land exactly in the center of the final tile
             placeTokenAtCenter(currentPos);
             tokenEl.classList.remove('hover');
@@ -218,12 +236,16 @@
             return;
           }
           currentPos = (start + i + 1) % TILE_COUNT;
-          // move parallel to side for more realistic travel
-          placeTokenParallel(currentPos);
+          const parallelTarget = getParallelTarget(currentPos);
+          // first move to the parallel target (keeps axis locked), then small pause then continue
+          animateTo(parallelTarget, 240, ()=>{
+            // slight pause to feel stepping rhythm
+            setTimeout(nextStep, 80);
+          });
           i++;
-          setTimeout(step, 320);
         }
-        step();
+
+        nextStep();
       }
 
       // Dice toss animation: add class .throw which runs keyframes; set numbers after animation
