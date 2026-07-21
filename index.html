@@ -24,8 +24,7 @@
     .tile{position:absolute;width:calc(100% / 11);height:calc(100% / 11);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:10px;color:#111;pointer-events:auto;transform:translate(-50%,-50%)}
     .tile .label{pointer-events:none;text-align:center;font-size:10px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,0.5)}
 
-    .tile.start{background:linear-gradient(90deg,#fff6a8,#ffd54a);border-radius:4px;color:#000}
-    .tile.community{background:#fff;border-radius:4px;color:#000}
+    /* removed .tile.start and .tile.community visuals to avoid doubling with board sprite */
 
     /* realistic token as image */
     #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 220ms cubic-bezier(.2,.9,.2,1), top 220ms cubic-bezier(.2,.9,.2,1), transform 140ms ease;pointer-events:none;z-index:6}
@@ -33,11 +32,8 @@
     /* hover/elevation state while moving (lower lift) */
     #token.hover{transform:translate(-50%,-50%) translateY(-6px) scale(1.03)}
 
-    /* stack positioned on board (will be moved by JS to the community tile) */
-    .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
-    .card{width:72px;height:96px;border-radius:8px;background:linear-gradient(180deg,#fff,#f9f9fb);box-shadow:0 10px 26px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;font-weight:700;color:#111}
-    .card.stack-bottom{position:absolute;transform:translateY(6px) rotate(-2deg);opacity:.9}
-    .card.stack-top{position:absolute;transform:translateY(0) rotate(0deg)}
+    /* hide the overlay card stack — board sprite already contains the printed stack */
+    .stack{display:none}
 
     /* controls */
     .controls{margin-top:14px;display:flex;gap:12px;align-items:center}
@@ -73,7 +69,7 @@
 
         <div id="board" aria-hidden="false"></div>
 
-        <!-- card stack will be positioned by JS near community square -->
+        <!-- card stack removed from overlay because it's drawn on the board sprite -->
         <div class="stack" id="community-stack" aria-hidden="true">
           <div class="card stack-bottom"></div>
           <div class="card stack-top">?</div>
@@ -142,9 +138,8 @@
           el.style.top = positions[i][1];
           el.style.transform = 'translate(-50%,-50%)';
           const label = document.createElement('div'); label.className='label';
-          if(i===startIndex){ el.classList.add('start'); label.textContent='GO'; }
-          else if(i===communityIndex){ el.classList.add('community'); label.textContent='Community Chest'; }
-          else { label.textContent = ''; }
+          // do not add 'start' or 'community' labels/classes — the board sprite already contains them
+          label.textContent = '';
           el.appendChild(label);
           boardEl.appendChild(el);
           tiles.push(el);
@@ -159,7 +154,7 @@
           tileCenters.push({x:cx,y:cy});
         });
 
-        // position stack directly on the community tile (like real board)
+        // position stack near community tile for logic but keep it hidden (sprite contains visual)
         const communityRect = tiles[communityIndex].getBoundingClientRect();
         const bbb = boardEl.getBoundingClientRect();
         const left = communityRect.left - bbb.left + communityRect.width*0.5;
@@ -296,7 +291,7 @@
         setTimeout(()=>{
           const start = currentPos;
           animateMovement(start, sum, ()=>{
-            if(start + sum >= TILE_COUNT){ const startTile = tiles[startIndex]; startTile.style.boxShadow = '0 0 0 6px rgba(255,240,160,0.8)'; setTimeout(()=>startTile.style.boxShadow='',520); }
+            // removed visual flash for GO tile to avoid doubling with board sprite
             if(currentPos === communityIndex){ pickBtn.style.display='inline-block'; pickBtn.disabled=false; }
             rollBtn.disabled=false;
           });
