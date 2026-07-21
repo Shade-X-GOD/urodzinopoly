@@ -28,10 +28,10 @@
     .tile.community{background:#fff;border-radius:4px;color:#000}
 
     /* realistic token as image */
-    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 320ms linear, top 320ms linear, transform 220ms ease;pointer-events:none;z-index:6}
+    #token{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);transition:left 260ms cubic-bezier(.2,.9,.2,1), top 260ms cubic-bezier(.2,.9,.2,1), transform 160ms ease;pointer-events:none;z-index:6}
     #token img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,0.35));display:block}
-    /* hover/elevation state while moving */
-    #token.hover{transform:translate(-50%,-60%) translateY(-14px) scale(1.06)}
+    /* hover/elevation state while moving (lower hover) */
+    #token.hover{transform:translate(-50%,-50%) translateY(-8px) scale(1.03)}
 
     /* stack positioned on board (will be moved by JS to the community tile) */
     .stack{position:absolute;width:72px;height:96px;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
@@ -111,6 +111,7 @@
       const TILE_COUNT = 40;
       const tiles = [];
       const tileCenters = [];
+      const tileSides = []; // which side (0 bottom,1 left,2 top,3 right)
       const communityIndex = 2; // community chest near GO (as earlier)
       const startIndex = 0;
       let currentPos = 36; // so first roll passes GO
@@ -122,6 +123,7 @@
         const positions = [];
         for(let i=0;i<TILE_COUNT;i++){
           const side = Math.floor(i / 10);
+          tileSides[i] = side;
           const posOnSide = i % 10;
           let x,y;
           if(side === 0){ const t = posOnSide/9; x = 1 - edgePad - inner * t; y = 1 - edgePad; }
@@ -150,7 +152,7 @@
 
         // compute centers
         const bb = boardEl.getBoundingClientRect();
-        tiles.forEach((el)=>{
+        tiles.forEach((el, i)=>{
           const rect = el.getBoundingClientRect();
           const cx = rect.left + rect.width/2 - bb.left;
           const cy = rect.top + rect.height/2 - bb.top;
@@ -163,39 +165,63 @@
         const left = communityRect.left - bbb.left + communityRect.width*0.5;
         const top = communityRect.top - bbb.top + communityRect.height*0.5;
         stackEl.style.left = left + 'px';
-        stackEl.style.top = (top - communityRect.height*0.12) + 'px'; // slight offset so stack sits inside tile
+        stackEl.style.top = (top - communityRect.height*0.12) + 'px';
       }
 
-      function adjustedCenter(center){
-        // nudge the token slightly toward the board center so it sits "inside" perimeter tiles
-        const bb = boardEl.getBoundingClientRect();
-        const boardCenter = {x: bb.width/2, y: bb.height/2};
-        const dx = center.x - boardCenter.x;
-        const dy = center.y - boardCenter.y;
-        const factor = 0.18; // how much to move toward center (0..1)
-        return { x: center.x - dx * factor, y: center.y - dy * factor };
-      }
-
-      function placeToken(pos){
+      function placeTokenAtCenter(pos){
         const idx = ((pos % TILE_COUNT) + TILE_COUNT) % TILE_COUNT;
         const center = tileCenters[idx];
         if(!center) return;
-        const ac = adjustedCenter(center);
-        // move token to adjusted center
-        tokenEl.style.left = ac.x + 'px';
-        tokenEl.style.top = ac.y + 'px';
+        tokenEl.style.left = center.x + 'px';
+        tokenEl.style.top = center.y + 'px';
+      }
+
+      function placeTokenParallel(pos){
+        // move token parallel to edge: for each side, lock one axis to the tile center's axis
+        const idx = ((pos % TILE_COUNT) + TILE_COUNT) % TILE_COUNT;
+        const center = tileCenters[idx];
+        const side = tileSides[idx];
+        if(!center) return;
+        const bb = boardEl.getBoundingClientRect();
+        // compute reference axis values per side
+        // bottom (0) -> keep y constant (bottom row y), change x
+        // left (1) -> keep x constant (left col x), change y
+        // top (2) -> keep y constant (top row y)
+        // right (3) -> keep x constant (right col x)
+        let targetX = center.x, targetY = center.y;
+        if(side === 0 || side === 2){
+          // ensure y equals the side's baseline (average of tiles on that side)
+          // compute baseline from any tile on that side (use index of corner positions)
+          // baseline: take the first tile on that side
+          // but simpler: compute median y of tiles on that side
+          const ys = tileCenters.filter((_,i)=>tileSides[i]===side).map(c=>c.y);
+          const baselineY = ys.reduce((s,v)=>s+v,0)/ys.length;
+          targetY = baselineY;
+        } else {
+          const xs = tileCenters.filter((_,i)=>tileSides[i]===side).map(c=>c.x);
+          const baselineX = xs.reduce((s,v)=>s+v,0)/xs.length;
+          targetX = baselineX;
+        }
+        tokenEl.style.left = targetX + 'px';
+        tokenEl.style.top = targetY + 'px';
       }
 
       function animateMovement(start, steps, cb){
         let i=0;
-        // add hover class to give illusion of elevation while moving
         tokenEl.classList.add('hover');
         function step(){
-          if(i>=steps){ tokenEl.classList.remove('hover'); if(cb) cb(); return; }
+          if(i>=steps){
+            // land exactly in the center of the final tile
+            placeTokenAtCenter(currentPos);
+            tokenEl.classList.remove('hover');
+            if(cb) cb();
+            return;
+          }
           currentPos = (start + i + 1) % TILE_COUNT;
-          placeToken(currentPos);
+          // move parallel to side for more realistic travel
+          placeTokenParallel(currentPos);
           i++;
-          setTimeout(step, 340);
+          setTimeout(step, 320);
         }
         step();
       }
@@ -203,7 +229,6 @@
       // Dice toss animation: add class .throw which runs keyframes; set numbers after animation
       function animateDice(finalA, finalB, duration=900){
         die1.classList.remove('throw'); die2.classList.remove('throw');
-        // force reflow
         void die1.offsetWidth; void die2.offsetWidth;
         die1.classList.add('throw'); die2.classList.add('throw');
         die1.textContent = '...'; die2.textContent = '...';
@@ -256,11 +281,11 @@
         },920);
       }
 
-      // init once board image loads (the user will place assets/board.jpg in repo)
-      function init(){ createTiles(); tokenEl.style.display='block'; tokenEl.setAttribute('aria-hidden','false'); placeToken(currentPos); rollBtn.addEventListener('click', onRoll); pickBtn.addEventListener('click', ()=>{ pickBtn.disabled=true; pickCardAnimation(()=>{ pickBtn.disabled=false; pickBtn.style.display='none'; }); }); }
+      // init once board image loads
+      function init(){ createTiles(); tokenEl.style.display='block'; tokenEl.setAttribute('aria-hidden','false'); placeTokenAtCenter(currentPos); rollBtn.addEventListener('click', onRoll); pickBtn.addEventListener('click', ()=>{ pickBtn.disabled=true; pickCardAnimation(()=>{ pickBtn.disabled=false; pickBtn.style.display='none'; }); }); }
 
       boardImg.addEventListener('load', ()=>{ setTimeout(init,80); }); if(boardImg.complete) setTimeout(init,80);
-      window.addEventListener('resize', ()=>{ clearTimeout(window._rT); window._rT = setTimeout(()=>{ createTiles(); placeToken(currentPos); },120); });
+      window.addEventListener('resize', ()=>{ clearTimeout(window._rT); window._rT = setTimeout(()=>{ createTiles(); placeTokenAtCenter(currentPos); },120); });
 
     })();
   </script>
