@@ -24,11 +24,12 @@
 
     /* Cover sits above inner pages and flips open on click (hinge on left) */
     .card-cover{
-      position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,#ff6fb0,#ff2d8a);box-shadow:0 18px 40px rgba(0,0,0,0.16);
+      position:absolute;inset:0;border-radius:12px;background:transparent;box-shadow:0 18px 40px rgba(0,0,0,0.16);
       display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:30;transform-origin:left center;
-      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent
+      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden
     }
-    .card-cover .title{padding:12px 24px;text-align:center}
+    .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+    .card-cover .title{position:relative;padding:12px 24px;text-align:center;z-index:40;color:#fff}
 
     /* Inner pages (left and right) */
     .card-inner{position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,#fff,#fff6fb);box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);overflow:hidden;display:flex}
@@ -46,9 +47,10 @@
     /* gift card on right page — clickable flip */
     .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
     .gift-card{width:min(240px,38%);height:min(140px,40%);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1);cursor:pointer}
-    .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.12)}
-    .gift-card .front{background:linear-gradient(180deg,#fff7f9,#ffeef6);color:#b30055}
-    .gift-card .back{background:linear-gradient(180deg,#fff,#f3f3ff);transform:rotateY(180deg);color:#1a237e}
+    .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.12);overflow:hidden}
+    .gift-card .face .sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+    .gift-card .front{background:transparent;color:#b30055}
+    .gift-card .back{background:transparent;transform:rotateY(180deg);color:#1a237e}
 
     /* open/closed states */
     .scene.open .card-cover{transform:rotateY(-160deg)}
@@ -98,13 +100,17 @@
             <div class="gift-card-wrap">
               <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
                 <div class="face front" id="frontFace">
-                  <div style="text-align:center;padding:8px">
+                  <!-- use PNG sprite for front face -->
+                  <img class="sprite" src="assets/gift-front.png" alt="Gift front">
+                  <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
                     <strong>Card Front</strong>
                     <div style="font-size:12px;color:var(--muted);margin-top:6px">(tap to flip)</div>
                   </div>
                 </div>
                 <div class="face back" id="backFace">
-                  <div style="text-align:center;padding:8px">
+                  <!-- use PNG sprite for back face -->
+                  <img class="sprite" src="assets/gift-back.png" alt="Gift back">
+                  <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
                     <strong>Surprise!</strong>
                     <div style="font-size:12px;color:var(--muted);margin-top:6px">This is the backside placeholder.</div>
                   </div>
@@ -116,6 +122,8 @@
 
         <!-- cover placed above pages -->
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
+          <!-- cover sprite PNG; falls back to title text if not available -->
+          <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
           <div class="title">Tap to open your card</div>
         </div>
 
