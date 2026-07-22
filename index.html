@@ -64,7 +64,6 @@
 
     /* open/closed states */
     .scene.open .card-cover{transform:rotateY(-160deg)}
-    .scene.open .card-cover.hidden{display:none}
 
     /* flipped gift */
     .gift-card.flipped{transform:rotateY(180deg)}
@@ -140,7 +139,7 @@
 
         <!-- cover placed above pages -->
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
-          <!-- cover sprite PNG; falls back to title text if not available -->
+          <!-- cover sprite PNG; stays visible after opening but becomes non-interactive -->
           <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
           <div class="title">Tap to open your card</div>
         </div>
@@ -165,14 +164,28 @@
       requestAnimationFrame(()=> setTimeout(()=> sceneRoot.classList.add('ready'), 60));
 
       function openCard(){
+        // add open state (cover rotates)
         sceneRoot.classList.add('open');
+        // mark as hidden for assistive tech
         cardCover.setAttribute('aria-hidden','true');
-        setTimeout(()=>{ cardCover.classList.add('hidden'); }, 760);
+        // after the transform completes, freeze cover at last frame by making it non-interactive
+        // but keep it visible (do NOT remove it from layout)
+        setTimeout(()=>{
+          cardCover.style.pointerEvents = 'none';
+          // keep in DOM so it visually stays rotated (frozen at last frame)
+          cardCover.dataset.frozen = 'true';
+        }, 760);
       }
       function closeCard(){
-        cardCover.classList.remove('hidden');
+        // unfreeze and restore interactivity
+        if(cardCover.dataset.frozen){
+          cardCover.style.pointerEvents = '';
+          delete cardCover.dataset.frozen;
+        }
+        // remove open state (cover rotates back)
         sceneRoot.classList.remove('open');
-        setTimeout(()=>{ cardCover.setAttribute('aria-hidden','false'); }, 40);
+        // reveal for assistive tech
+        cardCover.setAttribute('aria-hidden','false');
       }
 
       cardCover.addEventListener('click', openCard);
