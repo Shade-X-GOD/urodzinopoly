@@ -47,13 +47,6 @@
     .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;filter:none;z-index:0}
     .page .overlay{position:relative;z-index:2}
 
-    /* visible gutter/fold in the middle (decorative) */
-    .gutter{position:absolute;left:50%;top:12px;bottom:12px;width:6px;transform:translateX(-50%);z-index:3;pointer-events:none;border-radius:3px;
-      background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(0,0,0,0.06));box-shadow:0 2px 18px rgba(0,0,0,0.12) inset, 0 0 18px rgba(0,0,0,0.06)}
-
-    /* subtle inner fold shadow to emphasize the seam */
-    .fold-shadow{position:absolute;left:calc(50% - 26px);top:0;bottom:0;width:52px;pointer-events:none;z-index:2;background:linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0) 50%, rgba(0,0,0,0.06));mix-blend-mode:multiply;border-radius:6px}
-
     .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px;position:relative}
     .page .from{margin-top:14px;color:var(--muted);font-size:14px;position:relative}
 
@@ -105,10 +98,6 @@
     <div class="scene" id="scene">
       <div class="card-outer" id="cardOuter">
         <div class="card-inner" aria-hidden="false">
-
-          <!-- decorative fold shadow and gutter centered on the single page -->
-          <div class="fold-shadow" aria-hidden="true"></div>
-          <div class="gutter" aria-hidden="true"></div>
 
           <div class="page left" id="leftPage">
             <div class="content-bg" aria-hidden="true"></div>
