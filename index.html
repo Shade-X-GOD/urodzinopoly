@@ -132,6 +132,7 @@
       let state = 0;
       let posIndex = 0; // 0 = inside-right, 1 = rear
       const OPEN_MS = 760;
+      let hideCoverTimeout = null;
 
       function getPageWidth(){ return pages[0].getBoundingClientRect().width; }
 
@@ -143,13 +144,17 @@
         if(withWobble){ cardInner.style.setProperty('--tx', `${x}px`); cardInner.classList.add('wobble'); setTimeout(()=>cardInner.classList.remove('wobble'), duration + 40); }
       }
 
-      function init(){ state = 0; posIndex = 0; setTransformToPos(posIndex,0); }
+      function init(){
+        state = 0; posIndex = 0; cardCover.style.visibility = 'visible'; setTransformToPos(posIndex,0);
+      }
       window.addEventListener('load', init);
       window.addEventListener('resize', ()=> setTransformToPos(posIndex,0));
 
       // transitions
       function openCoverToInside(){
         // swipe left from cover: rotate cover open
+        clearTimeout(hideCoverTimeout);
+        cardCover.style.visibility = 'visible';
         cardCover.classList.add('open');
         // stay on inside-right (posIndex 0)
         posIndex = 0; setTransformToPos(posIndex, 420);
@@ -160,14 +165,20 @@
       function panInsideToRear(){
         // swipe left from inside-right: fold to rear
         // rotate cover closed while translating to rear
+        clearTimeout(hideCoverTimeout);
         delete cardCover.dataset.frozen;
         cardCover.classList.remove('open');
         posIndex = 1; setTransformToPos(posIndex, 720, true);
+        // when pan completes, hide the cover so the rear remains visible
+        hideCoverTimeout = setTimeout(()=>{ cardCover.style.visibility = 'hidden'; }, 720);
         state = 2;
       }
 
       function openRearToInside(){
         // swipe right from rear: unfold back to inside-right
+        clearTimeout(hideCoverTimeout);
+        // make cover visible again so we can animate it
+        cardCover.style.visibility = 'visible';
         cardCover.classList.add('open');
         posIndex = 0; setTransformToPos(posIndex, 720, true);
         setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_MS);
@@ -176,6 +187,8 @@
 
       function closeInsideToCover(){
         // swipe right from inside-right -> cover
+        clearTimeout(hideCoverTimeout);
+        cardCover.style.visibility = 'visible';
         cardCover.classList.remove('open');
         posIndex = 0; setTransformToPos(posIndex, 420);
         delete cardCover.dataset.frozen;
@@ -185,8 +198,7 @@
       function stepForward(){ if(state===0) openCoverToInside(); else if(state===1) panInsideToRear(); }
       function stepBackward(){ if(state===2) openRearToInside(); else if(state===1) closeInsideToCover(); }
 
-      // cover should NOT open on click (only open by swipe left) - remove open-on-click behavior
-      // we still allow cover to be clicked to step backward if desired; user requested remove open action on click, so do nothing on click
+      // cover should NOT open on click (only open by swipe left)
       cardCover.addEventListener('click', (e)=>{ e.stopPropagation(); /* no-op */ });
 
       // gift flip + zoom only when on rear (state===2)
