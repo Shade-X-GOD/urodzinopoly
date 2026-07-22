@@ -20,13 +20,12 @@
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:#111}
     .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
 
-    /* Scene: closed = single A5 (max-width = --card-width); open = unfolded A4 (max-width = 2 * --card-width) */
-    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px;overflow:hidden;transition:max-width 420ms cubic-bezier(.2,.9,.2,1)}
-    .scene.open{max-width:calc(var(--card-width) * 2)}
+    /* Scene: single-page viewport (mobile-friendly). We pan cardInner to show pages sequentially */
+    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px;overflow:hidden}
 
     .card-outer{width:100%;height:100%;position:relative;transform-style:preserve-3d}
 
-    /* Cover (A5) sits above inner pages and flips open on click (hinge on left). It remains visible (frozen) after opening.) */
+    /* Cover (A5) sits above inner pages and flips open on click (hinge on left). */
     .card-cover{
       position:absolute;inset:0;border-radius:12px;background:transparent;box-shadow:0 18px 40px rgba(0,0,0,0.16);
       display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:60;transform-origin:left center;
@@ -34,9 +33,18 @@
     }
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 
-    /* card-inner is the wide strip (3 * --card-width) containing rear, left and right pages side-by-side */
+    /* card-inner is the wide strip (rear | left | right) */
     .card-inner{position:absolute;left:0;top:0;height:100%;width:calc(var(--card-width) * 3);display:flex;transition:transform 420ms cubic-bezier(.2,.9,.2,1)}
-    /* We'll control the transform from JS so no hard-coded closed state class here */
+    /* pan wobble animation: small irregular rotation and translate to simulate hand movement */
+    @keyframes wobble {
+      0% { transform: translateX(var(--tx,0)) translateY(0) rotate(0.0deg); }
+      20% { transform: translateX(var(--tx,0)) translateY(-4px) rotate(-0.6deg); }
+      40% { transform: translateX(var(--tx,0)) translateY(2px) rotate(0.5deg); }
+      60% { transform: translateX(var(--tx,0)) translateY(-2px) rotate(-0.35deg); }
+      80% { transform: translateX(var(--tx,0)) translateY(1px) rotate(0.2deg); }
+      100% { transform: translateX(var(--tx,0)) translateY(0) rotate(0.0deg); }
+    }
+    .card-inner.wobble{animation: wobble 520ms ease both}
 
     /* Each page is exactly one A5 wide */
     .page{flex:0 0 var(--card-width);height:100%;position:relative;box-sizing:border-box;padding:var(--safe-padding);backface-visibility:hidden}
@@ -57,7 +65,7 @@
     .gift-card .back{background:transparent;transform:rotateY(180deg);color:#1a237e}
 
     /* cover open rotation */
-    .scene.open .card-cover{transform:rotateY(-160deg)}
+    .card-cover.open{transform:rotateY(-160deg)}
 
     /* frozen cover state (non-interactive but visually present) */
     .card-cover[data-frozen='true']{pointer-events:none;opacity:1}
@@ -73,7 +81,7 @@
 
     /* accessibility: reduce motion */
     @media (prefers-reduced-motion: reduce){
-      .card-cover,.gift-card,.card-inner{transition:none}
+      .card-cover,.gift-card,.card-inner{transition:none;animation:none}
     }
 
     /* small screens adjustments */
@@ -94,10 +102,10 @@
     <div class="scene" id="scene">
       <div class="card-outer">
 
-        <!-- wide inner strip: rear, left, right pages (left-to-right) -->
+        <!-- wide inner strip: rear | left | right -->
         <div class="card-inner" id="cardInner">
 
-          <!-- rear page: uses same interior sprite as other pages -->
+          <!-- rear page -->
           <div class="page rear" id="rearPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
@@ -108,6 +116,7 @@
             </div>
           </div>
 
+          <!-- left page (inner left) -->
           <div class="page left" id="leftPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
@@ -118,6 +127,7 @@
             </div>
           </div>
 
+          <!-- right page (inner right) -->
           <div class="page right" id="rightPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
@@ -151,7 +161,7 @@
 
         </div>
 
-        <!-- cover placed above pages; remains visible after open (frozen) -->
+        <!-- cover placed above pages -->
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
           <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
         </div>
@@ -171,51 +181,103 @@
       // entrance
       requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
 
-      // page indexing: 0 = rear, 1 = left+right (open spread shows pages 1&2), 2 = right (closed)
-      let index = 2; // start closed showing the right page only
-      const OPEN_ANIM_MS = 760; // match CSS
+      // States: 0 = cover (closed, right page shown with cover on top),
+      // 1 = left page visible, 2 = right page visible, 3 = rear page visible
+      // Internally translateX = -pos * pageWidth where pos maps: rear=0, left=1, right=2
+      let state = 0; // logical state for swipe sequence (0 cover,1 left,2 right,3 rear)
+      let posIndex = 2; // underlying position index for transform (0 rear,1 left,2 right)
+      const OPEN_MS = 760;
 
-      function getPageWidth(){
-        // each .page has a fixed layout width equal to its rendered width
-        return pages[0].getBoundingClientRect().width;
-      }
+      function getPageWidth(){ return pages[0].getBoundingClientRect().width; }
 
-      function updateTransform(animate = true){
+      function setTransformToPos(pos, duration=420, withWobble=false){
         const w = getPageWidth();
-        const x = -index * w;
-        if(!animate){ cardInner.style.transition = 'none'; }
+        const x = -pos * w;
+        // apply custom duration if provided
+        cardInner.style.transition = `transform ${duration}ms cubic-bezier(.2,.9,.2,1)`;
         cardInner.style.transform = `translateX(${x}px)`;
-        // Force reflow if we disabled transition to apply immediately
-        if(!animate){ void cardInner.offsetWidth; cardInner.style.transition = '';}        
-        // scene open state when index < 2
-        if(index < 2){ scene.classList.add('open'); }
-        else { scene.classList.remove('open'); }
-        // freeze/unfreeze cover: frozen when index < 2 (open or moved to rear)
-        if(index < 2){
-          // wait until cover rotate animation completes on first open
-          setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_ANIM_MS);
-        } else {
-          delete cardCover.dataset.frozen;
+        if(withWobble){
+          // set CSS variable to keep translateX in wobble keyframes
+          cardInner.style.setProperty('--tx', `${x}px`);
+          cardInner.classList.add('wobble');
+          // remove wobble after animation
+          setTimeout(()=> cardInner.classList.remove('wobble'), duration + 40);
         }
       }
 
-      // initialize transform to closed position
-      window.addEventListener('load', ()=>{ updateTransform(false); });
-      window.addEventListener('resize', ()=>{ updateTransform(false); });
-
-      function openCard(){
-        if(index <= 1) return; // already open-ish
-        index = 1; // show left+right spread
-        updateTransform();
+      // initialize to cover state showing right page behind cover
+      function init(){
+        state = 0; posIndex = 2; setTransformToPos(posIndex, 0);
       }
-      function closeCard(){
-        if(index === 2) return;
-        index = 2; // closed showing right page
-        updateTransform();
+      window.addEventListener('load', init);
+      window.addEventListener('resize', ()=> setTransformToPos(posIndex,0));
+
+      // Open (cover -> left): play original opening animation and reveal left page
+      function openToLeft(){
+        // rotate cover open
+        cardCover.classList.add('open');
+        // translate inner to left page (pos 1)
+        posIndex = 1; setTransformToPos(posIndex, 420);
+        // freeze cover after the open animation completes
+        setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_MS);
+        state = 1;
       }
 
-      cardCover.addEventListener('click', ()=>{ if(index === 2) openCard(); else closeCard(); });
-      cardCover.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { if(index===2) openCard(); else closeCard(); }});
+      // Pan from left -> right: slow camera move with wobble
+      function panLeftToRight(){
+        // ensure cover is frozen (it's open already)
+        cardCover.dataset.frozen = 'true';
+        // move to right page (pos 2) slowly with wobble
+        posIndex = 2; setTransformToPos(posIndex, 720, true);
+        state = 2;
+      }
+
+      // Move from right -> rear: play closing animation (simulate folding to rear)
+      function closeToRear(){
+        // un-freeze cover so it can animate closing if needed
+        delete cardCover.dataset.frozen;
+        // play a brief fold animation: rotate cover slightly back then translate to rear
+        // rotate cover back to closed for the effect
+        cardCover.classList.remove('open');
+        // animate to rear page (pos 0)
+        posIndex = 0; setTransformToPos(posIndex, 520);
+        state = 3;
+      }
+
+      // Generic swipe-forward/back handler following sequence 0->1->2->3 on left swipes
+      function stepForward(){
+        if(state === 0) openToLeft();
+        else if(state === 1) panLeftToRight();
+        else if(state === 2) closeToRear();
+        // if state === 3 do nothing (already at rear)
+      }
+      function stepBackward(){
+        if(state === 3){
+          // rear -> right
+          // open cover to match right being inner (we keep cover closed here)
+          posIndex = 2; setTransformToPos(posIndex, 520, true);
+          state = 2;
+          // freeze cover open because we might be in unfolded stage
+          cardCover.dataset.frozen = 'true';
+        } else if(state === 2){
+          // right -> left (pan back with wobble)
+          posIndex = 1; setTransformToPos(posIndex, 720, true);
+          state = 1;
+        } else if(state === 1){
+          // left -> cover (close)
+          // rotate cover back to closed and show right page behind it
+          cardCover.classList.remove('open');
+          // show right page
+          posIndex = 2; setTransformToPos(posIndex, 420);
+          // unfreeze cover after small timeout to allow clicking
+          delete cardCover.dataset.frozen;
+          state = 0;
+        }
+      }
+
+      // Cover click toggles open/close in the simple way: if closed, go to left; if open, go back to cover
+      cardCover.addEventListener('click', ()=>{ if(state === 0) openToLeft(); else { /* clicking while open should close back to cover */ stepBackward(); } });
+      cardCover.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { if(state===0) openToLeft(); else stepBackward(); }});
 
       function toggleFlip(){
         const flipped = gift.classList.toggle('flipped');
@@ -224,9 +286,9 @@
       gift.addEventListener('click', toggleFlip);
       gift.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') toggleFlip(); });
 
-      // swipe handling
+      // swipe handling: left swipe -> stepForward(), right swipe -> stepBackward()
       let touchStartX = 0, touchStartY = 0;
-      const SWIPE_THRESHOLD = 40;
+      const SWIPE_THRESHOLD = 30; // more responsive
 
       scene.addEventListener('touchstart', (e)=>{
         const t = e.touches[0]; touchStartX = t.clientX; touchStartY = t.clientY;
@@ -237,15 +299,15 @@
         const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY;
         if(Math.abs(dx) < SWIPE_THRESHOLD) return;
         if(Math.abs(dy) > Math.abs(dx) * 0.6) return; // ignore vertical swipes
-        if(dx < 0){ // left swipe => move to next (rear) when open, otherwise open
-          if(index > 0) { index = Math.max(0, index - 1); updateTransform(); }
-        } else { // right swipe => move forward (toward closed)
-          if(index < 2) { index = Math.min(2, index + 1); updateTransform(); }
-        }
+        if(dx < 0) { stepForward(); } else { stepBackward(); }
       }, {passive:true});
 
-      // expose for debugging
-      window._setIndex = (i)=>{ index = Math.max(0, Math.min(2, i)); updateTransform(); };
+      // Expose for debugging
+      window._state = ()=> state;
+      window._posIndex = ()=> posIndex;
+
+      // Initialize
+      init();
     })();
   </script>
 </body>
