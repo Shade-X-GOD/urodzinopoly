@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#fff1f8">
   <title>Happy Birthday</title>
-  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --card-width: min(420px, 92vw);
@@ -17,57 +17,48 @@
       --bg:#fff8fb;
     }
 
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:#111}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family:Merriweather, Georgia, serif;color:#111}
+    .wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;gap:18px}
 
-    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px;overflow:hidden}
+    /* Scene: single card that opens/closes */
+    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px;overflow:visible}
     .card-outer{width:100%;height:100%;position:relative;transform-style:preserve-3d}
 
-    /* Cover (A5) */
+    /* Cover */
     .card-cover{
       position:absolute;inset:0;border-radius:12px;background:transparent;box-shadow:0 18px 40px rgba(0,0,0,0.16);
-      display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:60;transform-origin:left center;
-      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden;pointer-events:auto
+      display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:40;transform-origin:left center;
+      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden;pointer-events:auto;touch-action:pan-y;
     }
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 
-    /* inner strip contains two pages: inside-right | rear */
-    .card-inner{position:absolute;left:0;top:0;height:100%;width:calc(var(--card-width) * 2);display:flex;transition:transform 420ms cubic-bezier(.2,.9,.2,1)}
+    /* Inner page (single) */
+    .card-inner{position:relative;left:0;top:0;height:100%;width:100%;display:block;border-radius:10px;overflow:hidden}
+    .card-inner .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;z-index:0}
+    .card-inner .overlay{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;padding:var(--safe-padding);box-sizing:border-box}
 
-    /* wobble for panning */
-    @keyframes wobble {0%{transform:translateX(var(--tx,0)) translateY(0) rotate(0deg);}20%{transform:translateX(var(--tx,0)) translateY(-4px) rotate(-0.6deg);}40%{transform:translateX(var(--tx,0)) translateY(2px) rotate(0.5deg);}60%{transform:translateX(var(--tx,0)) translateY(-2px) rotate(-0.35deg);}80%{transform:translateX(var(--tx,0)) translateY(1px) rotate(0.2deg);}100%{transform:translateX(var(--tx,0)) translateY(0) rotate(0deg);}}
-    .card-inner.wobble{animation:wobble 520ms ease both}
+    .wishes{max-width:86%;color:#2b2b2b;font-size:18px;line-height:1.45}
+    .wishes h2{margin:0 0 12px 0;color:var(--accent);font-size:28px}
+    .wishes p{margin:0 0 8px 0;font-size:16px}
+    .wishes .from{margin-top:12px;color:var(--muted);font-size:14px}
 
-    .page{flex:0 0 var(--card-width);height:100%;position:relative;box-sizing:border-box;padding:var(--safe-padding);backface-visibility:hidden}
-    .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;z-index:0}
-    .page .overlay{position:relative;z-index:2;height:100%}
-
-    /* handwriting font for inside-right wishes */
-    .wishes{font-family:'Dancing Script', cursive;font-size:20px;color:#2b2b2b;line-height:1.35;padding:8px;margin:auto;text-align:left}
-    .wishes h2{font-size:30px;margin:0 0 6px 0}
-    .wishes p{font-size:18px;margin:0}
-    .from{margin-top:12px;color:var(--muted);font-size:14px}
-
-    /* gift card styles (on rear) - will flip and zoom */
-    .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
-    .gift-card{width:min(220px,36%);height:min(130px,36%);position:relative;transform-style:preserve-3d;transition:transform 420ms cubic-bezier(.2,.9,.2,1);cursor:pointer;z-index:4}
-    .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.15)}
-    .gift-card .sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
-    /* transform combinations - handled explicitly for all combos */
-    .gift-card{transform:translateZ(0) rotateY(0) scale(1);}
-    .gift-card.flipped{transform:rotateY(180deg) scale(1)}
-    .gift-card.zoomed{transform:rotateY(0deg) scale(1.6);z-index:90}
-    .gift-card.flipped.zoomed{transform:rotateY(180deg) scale(1.6);z-index:90}
-
-    /* cover rotation class for open */
-    .card-cover.open{transform:rotateY(-160deg)}
+    /* Cover open rotation */
+    .scene.open .card-cover{transform:rotateY(-160deg)}
     .card-cover[data-frozen='true']{pointer-events:none}
 
-    /* reduce motion */
-    @media (prefers-reduced-motion: reduce){.card-cover,.card-inner,.gift-card{transition:none;animation:none}}
+    /* bottom interactive card */
+    .bottom-card-wrap{width:100%;display:flex;align-items:center;justify-content:center}
+    .bottom-card{width:min(260px,86%);height:140px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.12);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms;cursor:pointer;background:transparent}
+    .bottom-card .face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
+    .bottom-card .face img{width:100%;height:100%;object-fit:cover;display:block}
+    .bottom-card .back{transform:rotateY(180deg)}
+    .bottom-card.flipped{transform:rotateY(180deg) scale(1.25);box-shadow:0 30px 60px rgba(0,0,0,0.28)}
 
-    /* mobile adjustments */
-    @media (max-width:420px){:root{--safe-padding:12px}.wishes{font-size:18px}.wishes h2{font-size:26px}.gift-card{width:200px;height:120px}}
+    /* focus outline */
+    .bottom-card:focus{outline:3px solid rgba(255,77,166,0.18);outline-offset:6px}
+
+    @media (prefers-reduced-motion: reduce){.card-cover,.bottom-card{transition:none}}
+    @media (max-width:420px){:root{--safe-padding:12px}.wishes h2{font-size:22px}.bottom-card{height:120px}}
   </style>
 </head>
 <body>
@@ -76,43 +67,31 @@
       <div class="card-outer">
 
         <div class="card-inner" id="cardInner">
-
-          <!-- inside-right (index 0) -->
-          <div class="page right" id="insideRight">
-            <div class="content-bg" aria-hidden="true"></div>
-            <div class="overlay">
-              <div class="wishes" id="wishesText">
-                <h2>Happy Birthday!</h2>
-                <p>Wishing you oceans of joy and a year full of wonderful surprises. May every moment today fill your heart with happiness.</p>
-                <div class="from">— With love</div>
-              </div>
+          <div class="content-bg" aria-hidden="true"></div>
+          <div class="overlay">
+            <div class="wishes" id="wishesText">
+              <h2>Happy Birthday!</h2>
+              <p>Wishing you a day overflowing with joy, laughter and small delights. May the coming year bring bright moments, warm memories and steady steps toward the dreams you keep close to your heart. Celebrate every little victory and know that you're cherished today and always.</p>
+              <div class="from">— With warmest wishes</div>
             </div>
           </div>
-
-          <!-- rear (index 1) -->
-          <div class="page rear" id="rearPage">
-            <div class="content-bg" aria-hidden="true"></div>
-            <div class="overlay">
-              <div class="gift-card-wrap">
-                <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
-                  <div class="face front" id="giftFront">
-                    <img class="sprite" src="assets/gift-front.png" alt="Gift front">
-                  </div>
-                  <div class="face back" id="giftBack">
-                    <img class="sprite" src="assets/gift-back.png" alt="Gift back">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        <!-- cover above pages -->
-        <div class="card-cover" id="cardCover" role="button" aria-label="Card cover" tabindex="0">
+        <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
           <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
         </div>
 
+      </div>
+    </div>
+
+    <div class="bottom-card-wrap">
+      <div class="bottom-card" id="bottomCard" role="button" tabindex="0" aria-pressed="false" aria-label="Gift card">
+        <div class="face front">
+          <img src="assets/gift-front.png" alt="Gift front">
+        </div>
+        <div class="face back">
+          <img src="assets/gift-back.png" alt="Gift back">
+        </div>
       </div>
     </div>
   </div>
@@ -120,94 +99,45 @@
   <script>
     (function(){
       const scene = document.getElementById('scene');
-      const cardInner = document.getElementById('cardInner');
       const cardCover = document.getElementById('cardCover');
-      const gift = document.getElementById('giftCard');
-      const pages = Array.from(document.querySelectorAll('.page'));
+      const bottomCard = document.getElementById('bottomCard');
 
-      // initial state:
-      // state 0 = cover (closed, inside-right visible under cover)
-      // state 1 = inside-right (cover opened)
-      // state 2 = rear (cover closed over rear)
-      let state = 0;
-      let posIndex = 0; // 0 = inside-right, 1 = rear
-      const OPEN_MS = 760;
+      // entrance
+      requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
 
-      function getPageWidth(){ return pages[0].getBoundingClientRect().width; }
+      let isOpen = false;
+      const OPEN_ANIM_MS = 760; // match CSS
 
-      function setTransformToPos(pos, duration=420, withWobble=false){
-        const w = getPageWidth();
-        const x = -pos * w;
-        cardInner.style.transition = `transform ${duration}ms cubic-bezier(.2,.9,.2,1)`;
-        cardInner.style.transform = `translateX(${x}px)`;
-        if(withWobble){ cardInner.style.setProperty('--tx', `${x}px`); cardInner.classList.add('wobble'); setTimeout(()=>cardInner.classList.remove('wobble'), duration + 40); }
+      function openCard(){
+        if(isOpen) return;
+        isOpen = true;
+        scene.classList.add('open');
+        // after animation freeze cover visually at last frame and disable interactions
+        setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_ANIM_MS);
       }
 
-      function init(){ state = 0; posIndex = 0; setTransformToPos(posIndex,0); }
-      window.addEventListener('load', init);
-      window.addEventListener('resize', ()=> setTransformToPos(posIndex,0));
-
-      // transitions
-      function openCoverToInside(){
-        // swipe left from cover: rotate cover open
-        cardCover.classList.add('open');
-        // stay on inside-right (posIndex 0)
-        posIndex = 0; setTransformToPos(posIndex, 420);
-        setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_MS);
-        state = 1;
+      function closeCard(){
+        if(!isOpen) return;
+        isOpen = false;
+        if(cardCover.dataset.frozen){ delete cardCover.dataset.frozen; }
+        scene.classList.remove('open');
       }
 
-      function panInsideToRear(){
-        // swipe left from inside-right: fold to rear
-        // rotate cover closed while translating to rear
-        delete cardCover.dataset.frozen;
-        cardCover.classList.remove('open');
-        posIndex = 1; setTransformToPos(posIndex, 720, true);
-        state = 2;
+      cardCover.addEventListener('click', ()=>{ isOpen ? closeCard() : openCard(); });
+      cardCover.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); isOpen ? closeCard() : openCard(); } });
+
+      // bottom card flip + zoom
+      let flipped = false;
+      function toggleBottomCard(){
+        flipped = !flipped;
+        bottomCard.classList.toggle('flipped', flipped);
+        bottomCard.setAttribute('aria-pressed', String(flipped));
       }
-
-      function openRearToInside(){
-        // swipe right from rear: unfold back to inside-right
-        cardCover.classList.add('open');
-        posIndex = 0; setTransformToPos(posIndex, 720, true);
-        setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_MS);
-        state = 1;
-      }
-
-      function closeInsideToCover(){
-        // swipe right from inside-right -> cover
-        cardCover.classList.remove('open');
-        posIndex = 0; setTransformToPos(posIndex, 420);
-        delete cardCover.dataset.frozen;
-        state = 0;
-      }
-
-      function stepForward(){ if(state===0) openCoverToInside(); else if(state===1) panInsideToRear(); }
-      function stepBackward(){ if(state===2) openRearToInside(); else if(state===1) closeInsideToCover(); }
-
-      // cover should NOT open on click (only open by swipe left) - remove open-on-click behavior
-      // we still allow cover to be clicked to step backward if desired; user requested remove open action on click, so do nothing on click
-      cardCover.addEventListener('click', (e)=>{ e.stopPropagation(); /* no-op */ });
-
-      // gift flip + zoom only when on rear (state===2)
-      let giftZoomed = false;
-      gift.addEventListener('click', ()=>{
-        if(state !== 2) return; // only interactive on rear
-        giftZoomed = !giftZoomed;
-        if(giftZoomed){ gift.classList.add('flipped','zoomed'); gift.setAttribute('aria-pressed','true'); }
-        else { gift.classList.remove('flipped','zoomed'); gift.setAttribute('aria-pressed','false'); }
-      });
-      gift.addEventListener('keydown', (e)=>{ if((e.key==='Enter' || e.key===' ') && state===2) { e.preventDefault(); gift.click(); }});
-
-      // touch handling: left swipe forward, right swipe back
-      let touchStartX=0, touchStartY=0; const THRESH=30;
-      scene.addEventListener('touchstart', (e)=>{ const t=e.touches[0]; touchStartX=t.clientX; touchStartY=t.clientY; }, {passive:true});
-      scene.addEventListener('touchend', (e)=>{ const t=e.changedTouches[0]; const dx=t.clientX-touchStartX; const dy=t.clientY-touchStartY; if(Math.abs(dx)<THRESH) return; if(Math.abs(dy)>Math.abs(dx)*0.6) return; if(dx<0) stepForward(); else stepBackward(); }, {passive:true});
+      bottomCard.addEventListener('click', toggleBottomCard);
+      bottomCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleBottomCard(); } });
 
       // expose for debug
-      window._state = ()=>state; window._pos = ()=>posIndex;
-
-      init();
+      window._openCard = openCard; window._closeCard = closeCard; window._toggleBottom = toggleBottomCard;
     })();
   </script>
 </body>
