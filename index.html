@@ -37,28 +37,29 @@
     .card-inner .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;z-index:0}
     .card-inner .overlay{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;padding:var(--safe-padding);box-sizing:border-box}
 
-    .wishes{max-width:86%;color:#2b2b2b;font-size:18px;line-height:1.45}
+    .wishes{width:86%;color:#2b2b2b;font-size:18px;line-height:1.45}
     .wishes h2{margin:0 0 12px 0;color:var(--accent);font-size:28px}
     .wishes p{margin:0 0 8px 0;font-size:16px}
     .wishes .from{margin-top:12px;color:var(--muted);font-size:14px}
+
+    /* envelope (small) */
+    .envelope{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;width:72px;height:48px;border-radius:8px;overflow:hidden;cursor:pointer;z-index:6;box-shadow:0 8px 20px rgba(0,0,0,0.12);transition:transform 280ms ease}
+    .envelope img{width:100%;height:100%;object-fit:cover;display:block}
+    .envelope:active{transform:translateX(-50%) scale(0.98)}
+
+    /* modal popup */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:120}
+    .modal.show{display:flex}
+    .modal .panel{width:min(86vw,480px);max-height:86vh;border-radius:12px;overflow:hidden;transform:scale(0.96);transition:transform 260ms cubic-bezier(.2,.9,.2,1)}
+    .modal.show .panel{transform:scale(1)}
+    .modal .panel img{width:100%;height:auto;display:block}
 
     /* Cover open rotation */
     .scene.open .card-cover{transform:rotateY(-160deg)}
     .card-cover[data-frozen='true']{pointer-events:none}
 
-    /* bottom interactive card */
-    .bottom-card-wrap{width:100%;display:flex;align-items:center;justify-content:center}
-    .bottom-card{width:min(260px,86%);height:140px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.12);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms;cursor:pointer;background:transparent}
-    .bottom-card .face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
-    .bottom-card .face img{width:100%;height:100%;object-fit:cover;display:block}
-    .bottom-card .back{transform:rotateY(180deg)}
-    .bottom-card.flipped{transform:rotateY(180deg) scale(1.25);box-shadow:0 30px 60px rgba(0,0,0,0.28)}
-
-    /* focus outline */
-    .bottom-card:focus{outline:3px solid rgba(255,77,166,0.18);outline-offset:6px}
-
-    @media (prefers-reduced-motion: reduce){.card-cover,.bottom-card{transition:none}}
-    @media (max-width:420px){:root{--safe-padding:12px}.wishes h2{font-size:22px}.bottom-card{height:120px}}
+    @media (prefers-reduced-motion: reduce){.card-cover,.envelope,.modal .panel{transition:none}}
+    @media (max-width:420px){:root{--safe-padding:12px}.wishes h2{font-size:22px}.envelope{width:64px;height:44px}}
   </style>
 </head>
 <body>
@@ -74,6 +75,10 @@
               <p>Wishing you a day overflowing with joy, laughter and small delights. May the coming year bring bright moments, warm memories and steady steps toward the dreams you keep close to your heart. Celebrate every little victory and know that you're cherished today and always.</p>
               <div class="from">— With warmest wishes</div>
             </div>
+            <!-- small envelope placed slightly above the bottom, inside the card -->
+            <button class="envelope" id="envelope" aria-pressed="false" aria-label="Open envelope">
+              <img src="assets/gift-front.png" alt="Envelope front">
+            </button>
           </div>
         </div>
 
@@ -84,23 +89,22 @@
       </div>
     </div>
 
-    <div class="bottom-card-wrap">
-      <div class="bottom-card" id="bottomCard" role="button" tabindex="0" aria-pressed="false" aria-label="Gift card">
-        <div class="face front">
-          <img src="assets/gift-front.png" alt="Gift front">
-        </div>
-        <div class="face back">
-          <img src="assets/gift-back.png" alt="Gift back">
-        </div>
+    <!-- modal that shows gift-back in center when envelope clicked -->
+    <div class="modal" id="modal" role="dialog" aria-hidden="true">
+      <div class="panel" id="modalPanel">
+        <img src="assets/gift-back.png" alt="Gift back">
       </div>
     </div>
+
   </div>
 
   <script>
     (function(){
       const scene = document.getElementById('scene');
       const cardCover = document.getElementById('cardCover');
-      const bottomCard = document.getElementById('bottomCard');
+      const envelope = document.getElementById('envelope');
+      const modal = document.getElementById('modal');
+      const modalPanel = document.getElementById('modalPanel');
 
       // entrance
       requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
@@ -112,7 +116,6 @@
         if(isOpen) return;
         isOpen = true;
         scene.classList.add('open');
-        // after animation freeze cover visually at last frame and disable interactions
         setTimeout(()=>{ cardCover.dataset.frozen = 'true'; }, OPEN_ANIM_MS);
       }
 
@@ -126,18 +129,48 @@
       cardCover.addEventListener('click', ()=>{ isOpen ? closeCard() : openCard(); });
       cardCover.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); isOpen ? closeCard() : openCard(); } });
 
-      // bottom card flip + zoom
-      let flipped = false;
-      function toggleBottomCard(){
-        flipped = !flipped;
-        bottomCard.classList.toggle('flipped', flipped);
-        bottomCard.setAttribute('aria-pressed', String(flipped));
+      // envelope click -> show modal with gift-back.png
+      function showModal(){
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden','false');
       }
-      bottomCard.addEventListener('click', toggleBottomCard);
-      bottomCard.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleBottomCard(); } });
+      function hideModal(){
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden','true');
+      }
+      function toggleModal(){
+        if(modal.classList.contains('show')) hideModal(); else showModal();
+        envelope.setAttribute('aria-pressed', String(modal.classList.contains('show')));
+      }
+
+      envelope.addEventListener('click', (e)=>{ e.stopPropagation(); toggleModal(); });
+      envelope.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleModal(); } });
+
+      // clicking modal backdrop closes it
+      modal.addEventListener('click', (e)=>{ if(e.target === modal || e.target === modalPanel) hideModal(); });
+
+      // swipe handling: left swipe opens, right swipe closes
+      let touchStartX=0, touchStartY=0; const THRESH=30;
+      function onTouchStart(e){ const t = (e.touches && e.touches[0]) || e; touchStartX = t.clientX; touchStartY = t.clientY; }
+      function onTouchEnd(e){ const t = (e.changedTouches && e.changedTouches[0]) || e; const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY; if(Math.abs(dx) < THRESH) return; if(Math.abs(dy) > Math.abs(dx) * 0.6) return; if(dx < 0) openCard(); else closeCard(); }
+
+      // attach touch handlers to scene and cover so gestures work when cover overlays
+      scene.addEventListener('touchstart', onTouchStart, {passive:true});
+      scene.addEventListener('touchend', onTouchEnd, {passive:true});
+      cardCover.addEventListener('touchstart', onTouchStart, {passive:true});
+      cardCover.addEventListener('touchend', onTouchEnd, {passive:true});
+
+      // pointer fallback
+      scene.addEventListener('pointerdown', (e)=>{ if(e.pointerType==='touch') onTouchStart(e); }, {passive:true});
+      scene.addEventListener('pointerup', (e)=>{ if(e.pointerType==='touch') onTouchEnd(e); }, {passive:true});
+      cardCover.addEventListener('pointerdown', (e)=>{ if(e.pointerType==='touch') onTouchStart(e); }, {passive:true});
+      cardCover.addEventListener('pointerup', (e)=>{ if(e.pointerType==='touch') onTouchEnd(e); }, {passive:true});
+
+      // close modal with Escape
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) hideModal(); });
 
       // expose for debug
-      window._openCard = openCard; window._closeCard = closeCard; window._toggleBottom = toggleBottomCard;
+      window._openCard = openCard; window._closeCard = closeCard; window._toggleModal = toggleModal;
     })();
   </script>
 </body>
