@@ -8,52 +8,49 @@
   <title>Happy Birthday</title>
   <style>
     :root{
-      /* A5 portrait pages: width and height using A-series ratio (sqrt(2) ≈ 1.4142) */
-      --card-width: min(420px, 92vw); /* page width (responsive cap) */
-      --card-height: calc(var(--card-width) * 1.4142); /* portrait height */
+      /* A5 portrait: width and height using A-series ratio (sqrt(2) ≈ 1.4142) */
+      --card-width: min(420px, 92vw);
+      --card-height: calc(var(--card-width) * 1.4142);
       --accent:#ff4da6;
       --muted:#6b6b6b;
       --safe-padding:18px;
       --bg:#fff8fb;
     }
+
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:#111}
     .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
 
-    /* Scene now always shows a single A5 portrait page */
-    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px}
+    /* Scene: closed = single A5 (max-width = --card-width); open = unfolded A4 (max-width = 2 * --card-width) */
+    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px;overflow:hidden;transition:max-width 420ms cubic-bezier(.2,.9,.2,1)}
+    .scene.open{max-width:calc(var(--card-width) * 2)}
+
     .card-outer{width:100%;height:100%;position:relative;transform-style:preserve-3d}
 
-    /* Cover sits above inner pages and flips open on click (hinge on left) */
+    /* Cover (A5) sits above inner pages and flips open on click (hinge on left). It remains visible (frozen) after opening.) */
     .card-cover{
       position:absolute;inset:0;border-radius:12px;background:transparent;box-shadow:0 18px 40px rgba(0,0,0,0.16);
-      display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:30;transform-origin:left center;
-      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden
+      display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;z-index:40;transform-origin:left center;
+      transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden;pointer-events:auto
     }
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 
-    /* Inner pages container — single-page view */
-    .card-inner{position:relative;inset:0;border-radius:12px;overflow:hidden;width:100%;height:100%;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);}
+    /* card-inner is the wide strip (2 * --card-width) containing two A5 pages side-by-side */
+    .card-inner{position:absolute;left:0;top:0;height:100%;width:calc(var(--card-width) * 2);display:flex;transition:transform 420ms cubic-bezier(.2,.9,.2,1)}
+    /* closed state: shift left so right page sits inside the viewport (single A5) */
+    .card-inner.closed{transform:translateX(calc(-1 * var(--card-width)))}
+    .scene.open .card-inner{transform:translateX(0)}
 
-    /* Pages: keep two pages but only show one A5 page at a time (right page visible)
-       pages animate horizontally when switched via swipe */
-    .page{
-      position:absolute;top:0;width:100%;height:100%;display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:left 360ms cubic-bezier(.2,.9,.2,1), opacity 360ms ease;
-    }
-    .page.left{left:-100%;opacity:0;pointer-events:none}
-    .page.left.visible{left:0;opacity:1;pointer-events:auto}
-    .page.right{left:0;opacity:1;pointer-events:auto}
-    .page.right.hidden{left:100%;opacity:0;pointer-events:none}
+    /* Each page is exactly one A5 wide */
+    .page{flex:0 0 var(--card-width);height:100%;position:relative;box-sizing:border-box;padding:var(--safe-padding);backface-visibility:hidden}
 
-    /* Use the provided inner sprite for page backgrounds */
-    .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;filter:none;z-index:0}
-    .page .overlay{position:relative;z-index:2}
+    /* background sprite fills each page edge-to-edge */
+    .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;z-index:0}
+    .page .overlay{position:relative;z-index:2;height:100%}
 
     .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px;position:relative}
     .page .from{margin-top:14px;color:var(--muted);font-size:14px;position:relative}
 
-    /* small controls removed (user requested) */
-
-    /* gift card on right page — clickable flip */
+    /* gift card remains on the right-side page */
     .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
     .gift-card{width:min(240px,38%);height:min(140px,40%);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1);cursor:pointer;z-index:4}
     .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.12);overflow:hidden}
@@ -61,8 +58,11 @@
     .gift-card .front{background:transparent;color:#b30055}
     .gift-card .back{background:transparent;transform:rotateY(180deg);color:#1a237e}
 
-    /* open/closed states */
+    /* cover open rotation */
     .scene.open .card-cover{transform:rotateY(-160deg)}
+
+    /* frozen cover state (non-interactive but visually present) */
+    .card-cover[data-frozen='true']{pointer-events:none;opacity:1}
 
     /* flipped gift */
     .gift-card.flipped{transform:rotateY(180deg)}
@@ -75,7 +75,7 @@
 
     /* accessibility: reduce motion */
     @media (prefers-reduced-motion: reduce){
-      .card-cover,.gift-card{transition:none}
+      .card-cover,.gift-card,.card-inner{transition:none}
     }
 
     /* small screens adjustments */
@@ -94,16 +94,16 @@
 <body>
   <div class="wrap">
     <div class="scene" id="scene">
-      <div class="card-outer" id="cardOuter">
-        <div class="card-inner" aria-hidden="false">
+      <div class="card-outer">
 
+        <!-- wide inner strip: left page then right page -->
+        <div class="card-inner closed" id="cardInner">
           <div class="page left" id="leftPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
-              <div class="wishes" id="wishesText">
-                <h2 style="margin:0 0 8px 0;color:var(--accent)">Happy Birthday!</h2>
-                <p style="margin:0">Wishing you a day filled with laughter, sunshine and everything that makes you smile. You're amazing — I hope this year brings you closer to your dreams.</p>
-                <div class="from">— From someone who likes you</div>
+              <div class="wishes" id="wishesTextLeft">
+                <h2 style="margin:0 0 8px 0;color:var(--accent)">Left Page</h2>
+                <p style="margin:0">This is the left side content (inner left) of the unfolded A4 card.</p>
               </div>
             </div>
           </div>
@@ -111,10 +111,15 @@
           <div class="page right" id="rightPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
+              <div class="wishes" id="wishesText">
+                <h2 style="margin:0 0 8px 0;color:var(--accent)">Happy Birthday!</h2>
+                <p style="margin:0">Wishing you a day filled with laughter, sunshine and everything that makes you smile. You're amazing — I hope this year brings you closer to your dreams.</p>
+                <div class="from">— From someone who likes you</div>
+              </div>
+
               <div class="gift-card-wrap">
                 <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
                   <div class="face front" id="frontFace">
-                    <!-- use PNG sprite for front face -->
                     <img class="sprite" src="assets/gift-front.png" alt="Gift front">
                     <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
                       <strong>Card Front</strong>
@@ -122,7 +127,6 @@
                     </div>
                   </div>
                   <div class="face back" id="backFace">
-                    <!-- use PNG sprite for back face -->
                     <img class="sprite" src="assets/gift-back.png" alt="Gift back">
                     <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
                       <strong>Surprise!</strong>
@@ -131,14 +135,13 @@
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
-
         </div>
 
-        <!-- cover placed above pages -->
+        <!-- cover placed above pages; remains visible after open (frozen) -->
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
-          <!-- cover sprite PNG; stays visible after opening but becomes non-interactive -->
           <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
         </div>
 
@@ -148,58 +151,42 @@
 
   <script>
     (function(){
-      const sceneRoot = document.getElementById('scene');
+      const scene = document.getElementById('scene');
+      const cardInner = document.getElementById('cardInner');
       const cardCover = document.getElementById('cardCover');
       const gift = document.getElementById('giftCard');
-      const leftPage = document.getElementById('leftPage');
-      const rightPage = document.getElementById('rightPage');
 
       // entrance
-      requestAnimationFrame(()=> setTimeout(()=> sceneRoot.classList.add('ready'), 60));
+      requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
 
-      // page state
-      let currentPage = 'right';
-      leftPage.classList.add('left'); leftPage.classList.remove('visible','hidden');
-      rightPage.classList.add('right');
-      // initialize visibility
-      leftPage.classList.add('hidden');
-      rightPage.classList.remove('hidden');
-      rightPage.classList.add('visible');
-
-      function showPage(name){
-        if(name === currentPage) return;
-        if(name === 'left'){
-          leftPage.classList.add('visible'); leftPage.classList.remove('hidden');
-          rightPage.classList.add('hidden'); rightPage.classList.remove('visible');
-        } else {
-          rightPage.classList.add('visible'); rightPage.classList.remove('hidden');
-          leftPage.classList.add('hidden'); leftPage.classList.remove('visible');
-        }
-        currentPage = name;
-      }
+      let isOpen = false;
+      const OPEN_ANIM_MS = 760; // match CSS
 
       function openCard(){
-        // add open state (cover rotates)
-        sceneRoot.classList.add('open');
-        // mark as hidden for assistive tech
-        cardCover.setAttribute('aria-hidden','true');
-        // after the transform completes, freeze cover at last frame by making it non-interactive
+        if(isOpen) return;
+        isOpen = true;
+        scene.classList.add('open');
+        // slide inner to show both pages
+        cardInner.classList.remove('closed');
+        // after animation freeze cover visually at last frame and disable interactions
         setTimeout(()=>{
-          cardCover.style.pointerEvents = 'none';
           cardCover.dataset.frozen = 'true';
-        }, 760);
-      }
-      function closeCard(){
-        if(cardCover.dataset.frozen){
-          cardCover.style.pointerEvents = '';
-          delete cardCover.dataset.frozen;
-        }
-        sceneRoot.classList.remove('open');
-        cardCover.setAttribute('aria-hidden','false');
+        }, OPEN_ANIM_MS);
       }
 
-      cardCover.addEventListener('click', openCard);
-      cardCover.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') openCard(); });
+      function closeCard(){
+        if(!isOpen) return;
+        isOpen = false;
+        // un-freeze cover to allow interaction during close
+        if(cardCover.dataset.frozen){ delete cardCover.dataset.frozen; }
+        // slide inner so only right page is visible
+        cardInner.classList.add('closed');
+        // shrink scene back to single page
+        scene.classList.remove('open');
+      }
+
+      cardCover.addEventListener('click', ()=>{ isOpen ? closeCard() : openCard(); });
+      cardCover.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') isOpen ? closeCard() : openCard(); });
 
       function toggleFlip(){
         const flipped = gift.classList.toggle('flipped');
@@ -208,32 +195,29 @@
       gift.addEventListener('click', toggleFlip);
       gift.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') toggleFlip(); });
 
-      // swipe handling for page switching on touch devices
+      // swipe handling: when closed, swipe left opens; when open, swipe right closes
       let touchStartX = 0, touchStartY = 0;
-      const SWIPE_THRESHOLD = 40; // px
+      const SWIPE_THRESHOLD = 40;
 
-      sceneRoot.addEventListener('touchstart', (e)=>{
-        const t = e.touches[0];
-        touchStartX = t.clientX; touchStartY = t.clientY;
+      scene.addEventListener('touchstart', (e)=>{
+        const t = e.touches[0]; touchStartX = t.clientX; touchStartY = t.clientY;
       }, {passive:true});
 
-      sceneRoot.addEventListener('touchend', (e)=>{
+      scene.addEventListener('touchend', (e)=>{
         const t = e.changedTouches[0];
-        const dx = t.clientX - touchStartX;
-        const dy = t.clientY - touchStartY;
-        if(Math.abs(dx) < SWIPE_THRESHOLD) return; // not enough horizontal movement
-        if(Math.abs(dy) > Math.abs(dx) * 0.6) return; // mostly vertical
-        if(dx < 0){
-          // swipe left -> show left page
-          showPage('left');
-        } else {
-          // swipe right -> show right page
-          showPage('right');
+        const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY;
+        if(Math.abs(dx) < SWIPE_THRESHOLD) return;
+        if(Math.abs(dy) > Math.abs(dx) * 0.6) return; // ignore vertical swipes
+        if(dx < 0){ // left swipe
+          // if closed -> open; if open -> do nothing
+          if(!isOpen) openCard();
+        } else { // right swipe
+          if(isOpen) closeCard();
         }
       }, {passive:true});
 
-      // expose closeCard for programmatic use (optional)
-      window._cardClose = closeCard;
+      // expose for debugging
+      window._openCard = openCard; window._closeCard = closeCard;
     })();
   </script>
 </body>
