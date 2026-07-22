@@ -46,7 +46,7 @@
     /* gift card on right page — clickable flip */
     .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
     .gift-card{width:min(240px,38%);height:min(140px,40%);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1);cursor:pointer}
-    .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12)}
+    .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.12)}
     .gift-card .front{background:linear-gradient(180deg,#fff7f9,#ffeef6);color:#b30055}
     .gift-card .back{background:linear-gradient(180deg,#fff,#f3f3ff);transform:rotateY(180deg);color:#1a237e}
 
@@ -98,15 +98,13 @@
             <div class="gift-card-wrap">
               <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
                 <div class="face front" id="frontFace">
-                  <!-- placeholder front sprite -->
-                  <div style="text-align:center;padding:10px">
+                  <div style="text-align:center;padding:8px">
                     <strong>Card Front</strong>
-                    <div style="font-size:12px;color:var(--muted);margin-top:6px">(click to flip)</div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:6px">(tap to flip)</div>
                   </div>
                 </div>
                 <div class="face back" id="backFace">
-                  <!-- placeholder back sprite / message -->
-                  <div style="text-align:center;padding:10px">
+                  <div style="text-align:center;padding:8px">
                     <strong>Surprise!</strong>
                     <div style="font-size:12px;color:var(--muted);margin-top:6px">This is the backside placeholder.</div>
                   </div>
@@ -116,47 +114,44 @@
           </div>
         </div>
 
+        <!-- cover placed above pages -->
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
           <div class="title">Tap to open your card</div>
         </div>
 
-      </div>
-
-      <div class="controls" id="controls">
-        <button class="btn" id="replayBtn">Close</button>
-        <button class="btn" id="resetFlipBtn">Reset flip</button>
+        <div class="controls">
+          <button class="btn" id="closeBtn">Close</button>
+          <button class="btn" id="resetFlipBtn">Reset flip</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     (function(){
-      const scene = document.getElementById('scene');
-      const cover = document.getElementById('cardCover');
+      const sceneRoot = document.getElementById('scene');
+      const cardCover = document.getElementById('cardCover');
       const gift = document.getElementById('giftCard');
-      const replayBtn = document.getElementById('replayBtn');
+      const closeBtn = document.getElementById('closeBtn');
       const resetFlipBtn = document.getElementById('resetFlipBtn');
 
-      // show scene entrance
-      requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
+      // entrance
+      requestAnimationFrame(()=> setTimeout(()=> sceneRoot.classList.add('ready'), 60));
 
       function openCard(){
-        scene.classList.add('open');
-        cover.setAttribute('aria-hidden','true');
-        // hide cover after animation ends
-        setTimeout(()=>{ cover.classList.add('hidden'); }, 680);
+        sceneRoot.classList.add('open');
+        cardCover.setAttribute('aria-hidden','true');
+        setTimeout(()=>{ cardCover.classList.add('hidden'); }, 760);
       }
-
       function closeCard(){
-        cover.classList.remove('hidden');
-        scene.classList.remove('open');
-        setTimeout(()=>{ cover.setAttribute('aria-hidden','false'); }, 40);
+        cardCover.classList.remove('hidden');
+        sceneRoot.classList.remove('open');
+        setTimeout(()=>{ cardCover.setAttribute('aria-hidden','false'); }, 40);
       }
 
-      cover.addEventListener('click', openCard);
-      cover.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') openCard(); });
+      cardCover.addEventListener('click', openCard);
+      cardCover.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') openCard(); });
 
-      // flip gift card
       function toggleFlip(){
         const flipped = gift.classList.toggle('flipped');
         gift.setAttribute('aria-pressed', String(flipped));
@@ -164,15 +159,12 @@
       gift.addEventListener('click', toggleFlip);
       gift.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') toggleFlip(); });
 
-      replayBtn.addEventListener('click', ()=>{ closeCard(); });
+      closeBtn.addEventListener('click', closeCard);
       resetFlipBtn.addEventListener('click', ()=>{ gift.classList.remove('flipped'); gift.setAttribute('aria-pressed','false'); });
 
-      // touch optimizations for iPhone Safari — prevent double-tap zoom while interacting
+      // touch optimization
       let lastTouch = 0;
       document.addEventListener('touchstart', function(e){ const t = Date.now(); if (t - lastTouch < 300) e.preventDefault(); lastTouch = t; }, {passive:false});
-
-      // orientation adjustments
-      window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ /* layout adapts */ },300); });
     })();
   </script>
 </body>
