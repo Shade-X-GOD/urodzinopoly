@@ -8,18 +8,20 @@
   <title>Happy Birthday</title>
   <style>
     :root{
-      --bg:#fff8fb;
-      --card-width:min(720px, 92vw);
-      --card-height:calc(var(--card-width) * 0.65);
+      /* A5 portrait pages: keep width reasonable and compute height using the A-series aspect ratio (sqrt(2) ≈ 1.4142) */
+      --card-width: min(420px, 92vw); /* page width (A5 portrait ~148mm mapped to px; responsive cap) */
+      --card-height: calc(var(--card-width) * 1.4142); /* portrait height = width * sqrt(2) */
       --accent:#ff4da6;
       --muted:#6b6b6b;
       --safe-padding:18px;
+      --bg:#fff8fb;
     }
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:#111}
     .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
 
-    /* Scene */
-    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px}
+    /* Scene sized to an A5 portrait page (and still shows two inner pages side-by-side when opened) */
+    .scene{width:100%;max-width:calc(var(--card-width) * 2); /* two pages side-by-side when open */
+           height:var(--card-height);position:relative;perspective:1200px}
     .card-outer{width:100%;height:100%;position:relative;transform-style:preserve-3d}
 
     /* Cover sits above inner pages and flips open on click (hinge on left) */
@@ -31,10 +33,11 @@
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
     .card-cover .title{position:relative;padding:12px 24px;text-align:center;z-index:40;color:#fff}
 
-    /* Inner pages (left and right) */
+    /* Inner pages (left and right) — each page is A5 portrait sized when the scene shows two pages side-by-side */
     .card-inner{position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,#fff,#fff6fb);box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);overflow:hidden;display:flex}
     .page{
-      flex:1;display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden
+      width:calc(50%); /* two pages side-by-side */
+      display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden
     }
     .page.left{border-right:1px solid rgba(0,0,0,0.04)}
     .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px}
@@ -76,6 +79,10 @@
       .card-cover{font-size:18px}
       .page .wishes{font-size:16px}
       .gift-card{width:200px;height:120px}
+      /* on very small screens show a single portrait page stacked center */
+      .scene{max-width:var(--card-width);height:var(--card-height)}
+      .card-inner{display:block}
+      .page{width:100%;height:100%}
     }
 
     /* subtle entrance */
