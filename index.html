@@ -8,9 +8,9 @@
   <title>Happy Birthday</title>
   <style>
     :root{
-      /* A5 portrait pages: keep width reasonable and compute height using the A-series aspect ratio (sqrt(2) ≈ 1.4142) */
-      --card-width: min(420px, 92vw); /* page width (A5 portrait ~148mm mapped to px; responsive cap) */
-      --card-height: calc(var(--card-width) * 1.4142); /* portrait height = width * sqrt(2) */
+      /* A5 portrait pages: width and height using A-series ratio (sqrt(2) ≈ 1.4142) */
+      --card-width: min(420px, 92vw); /* page width (responsive cap) */
+      --card-height: calc(var(--card-width) * 1.4142); /* portrait height */
       --accent:#ff4da6;
       --muted:#6b6b6b;
       --safe-padding:18px;
@@ -19,9 +19,8 @@
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#fff8fb,#fff1f8);font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;color:#111}
     .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
 
-    /* Scene sized to an A5 portrait page (and still shows two inner pages side-by-side when opened) */
-    .scene{width:100%;max-width:calc(var(--card-width) * 2); /* two pages side-by-side when open */
-           height:var(--card-height);position:relative;perspective:1200px}
+    /* Scene now always shows a single A5 portrait page */
+    .scene{width:100%;max-width:var(--card-width);height:var(--card-height);position:relative;perspective:1200px}
     .card-outer{width:100%;height:100%;position:relative;transform-style:preserve-3d}
 
     /* Cover sits above inner pages and flips open on click (hinge on left) */
@@ -33,15 +32,30 @@
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
     .card-cover .title{position:relative;padding:12px 24px;text-align:center;z-index:40;color:#fff}
 
-    /* Inner pages (left and right) — each page is A5 portrait sized when the scene shows two pages side-by-side */
-    .card-inner{position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,#fff,#fff6fb);box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);overflow:hidden;display:flex}
+    /* Inner pages container — single-page view */
+    .card-inner{position:relative;inset:0;border-radius:12px;overflow:hidden;width:100%;height:100%;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);}
+
+    /* Pages: we keep two pages in the DOM but only show one A5 page at a time (right page is visible)
+       Left page is positioned off-canvas; right page occupies the full A5 area. */
     .page{
-      width:calc(50%); /* two pages side-by-side */
-      display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden
+      position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden
     }
-    .page.left{border-right:1px solid rgba(0,0,0,0.04)}
-    .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px}
-    .page .from{margin-top:14px;color:var(--muted);font-size:14px}
+    .page.left{left:-100%;opacity:0;pointer-events:none}
+    .page.right{left:0;opacity:1;z-index:1}
+
+    /* Use the provided inner sprite for page backgrounds */
+    .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;filter:none;z-index:0}
+    .page .overlay{position:relative;z-index:2}
+
+    /* visible gutter/fold in the middle (decorative) */
+    .gutter{position:absolute;left:50%;top:12px;bottom:12px;width:6px;transform:translateX(-50%);z-index:3;pointer-events:none;border-radius:3px;
+      background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(0,0,0,0.06));box-shadow:0 2px 18px rgba(0,0,0,0.12) inset, 0 0 18px rgba(0,0,0,0.06)}
+
+    /* subtle inner fold shadow to emphasize the seam */
+    .fold-shadow{position:absolute;left:calc(50% - 26px);top:0;bottom:0;width:52px;pointer-events:none;z-index:2;background:linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0) 50%, rgba(0,0,0,0.06));mix-blend-mode:multiply;border-radius:6px}
+
+    .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px;position:relative}
+    .page .from{margin-top:14px;color:var(--muted);font-size:14px;position:relative}
 
     /* small controls */
     .controls{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;z-index:40}
@@ -49,7 +63,7 @@
 
     /* gift card on right page — clickable flip */
     .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
-    .gift-card{width:min(240px,38%);height:min(140px,40%);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1);cursor:pointer}
+    .gift-card{width:min(240px,38%);height:min(140px,40%);position:relative;transform-style:preserve-3d;transition:transform 520ms cubic-bezier(.2,.9,.2,1);cursor:pointer;z-index:4}
     .gift-card .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.12);overflow:hidden}
     .gift-card .face .sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
     .gift-card .front{background:transparent;color:#b30055}
@@ -79,10 +93,6 @@
       .card-cover{font-size:18px}
       .page .wishes{font-size:16px}
       .gift-card{width:200px;height:120px}
-      /* on very small screens show a single portrait page stacked center */
-      .scene{max-width:var(--card-width);height:var(--card-height)}
-      .card-inner{display:block}
-      .page{width:100%;height:100%}
     }
 
     /* subtle entrance */
@@ -95,36 +105,48 @@
     <div class="scene" id="scene">
       <div class="card-outer" id="cardOuter">
         <div class="card-inner" aria-hidden="false">
+
+          <!-- decorative fold shadow and gutter centered on the single page -->
+          <div class="fold-shadow" aria-hidden="true"></div>
+          <div class="gutter" aria-hidden="true"></div>
+
           <div class="page left" id="leftPage">
-            <div class="wishes" id="wishesText">
-              <h2 style="margin:0 0 8px 0;color:var(--accent)">Happy Birthday!</h2>
-              <p style="margin:0">Wishing you a day filled with laughter, sunshine and everything that makes you smile. You're amazing — I hope this year brings you closer to your dreams.</p>
-              <div class="from">— From someone who likes you</div>
+            <div class="content-bg" aria-hidden="true"></div>
+            <div class="overlay">
+              <div class="wishes" id="wishesText">
+                <h2 style="margin:0 0 8px 0;color:var(--accent)">Happy Birthday!</h2>
+                <p style="margin:0">Wishing you a day filled with laughter, sunshine and everything that makes you smile. You're amazing — I hope this year brings you closer to your dreams.</p>
+                <div class="from">— From someone who likes you</div>
+              </div>
             </div>
           </div>
 
           <div class="page right">
-            <div class="gift-card-wrap">
-              <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
-                <div class="face front" id="frontFace">
-                  <!-- use PNG sprite for front face -->
-                  <img class="sprite" src="assets/gift-front.png" alt="Gift front">
-                  <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
-                    <strong>Card Front</strong>
-                    <div style="font-size:12px;color:var(--muted);margin-top:6px">(tap to flip)</div>
+            <div class="content-bg" aria-hidden="true"></div>
+            <div class="overlay">
+              <div class="gift-card-wrap">
+                <div class="gift-card" id="giftCard" role="button" aria-pressed="false" tabindex="0">
+                  <div class="face front" id="frontFace">
+                    <!-- use PNG sprite for front face -->
+                    <img class="sprite" src="assets/gift-front.png" alt="Gift front">
+                    <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
+                      <strong>Card Front</strong>
+                      <div style="font-size:12px;color:var(--muted);margin-top:6px">(tap to flip)</div>
+                    </div>
                   </div>
-                </div>
-                <div class="face back" id="backFace">
-                  <!-- use PNG sprite for back face -->
-                  <img class="sprite" src="assets/gift-back.png" alt="Gift back">
-                  <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
-                    <strong>Surprise!</strong>
-                    <div style="font-size:12px;color:var(--muted);margin-top:6px">This is the backside placeholder.</div>
+                  <div class="face back" id="backFace">
+                    <!-- use PNG sprite for back face -->
+                    <img class="sprite" src="assets/gift-back.png" alt="Gift back">
+                    <div style="position:relative;z-index:2;text-align:center;padding:8px;pointer-events:none">
+                      <strong>Surprise!</strong>
+                      <div style="font-size:12px;color:var(--muted);margin-top:6px">This is the backside placeholder.</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
 
         <!-- cover placed above pages -->
