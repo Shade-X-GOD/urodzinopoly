@@ -30,18 +30,19 @@
       transition:transform 700ms cubic-bezier(.2,.9,.2,1);-webkit-tap-highlight-color:transparent;overflow:hidden
     }
     .card-cover .cover-sprite{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-    .card-cover .title{position:relative;padding:12px 24px;text-align:center;z-index:40;color:#fff}
 
     /* Inner pages container — single-page view */
     .card-inner{position:relative;inset:0;border-radius:12px;overflow:hidden;width:100%;height:100%;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.02);}
 
-    /* Pages: we keep two pages in the DOM but only show one A5 page at a time (right page is visible)
-       Left page is positioned off-canvas; right page occupies the full A5 area. */
+    /* Pages: keep two pages but only show one A5 page at a time (right page visible)
+       pages animate horizontally when switched via swipe */
     .page{
-      position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden
+      position:absolute;top:0;width:100%;height:100%;display:flex;flex-direction:column;padding:var(--safe-padding);box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:left 360ms cubic-bezier(.2,.9,.2,1), opacity 360ms ease;
     }
     .page.left{left:-100%;opacity:0;pointer-events:none}
-    .page.right{left:0;opacity:1;z-index:1}
+    .page.left.visible{left:0;opacity:1;pointer-events:auto}
+    .page.right{left:0;opacity:1;pointer-events:auto}
+    .page.right.hidden{left:100%;opacity:0;pointer-events:none}
 
     /* Use the provided inner sprite for page backgrounds */
     .page .content-bg{position:absolute;inset:0;background-image:url('assets/wnetrze3.png');background-size:cover;background-position:center;filter:none;z-index:0}
@@ -50,9 +51,7 @@
     .page .wishes{margin:auto;color:#2b2b2b;font-size:18px;line-height:1.4;padding:8px;position:relative}
     .page .from{margin-top:14px;color:var(--muted);font-size:14px;position:relative}
 
-    /* small controls */
-    .controls{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;z-index:40}
-    .btn{background:rgba(255,255,255,0.88);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;color:#111;box-shadow:0 6px 18px rgba(0,0,0,0.08);border:0}
+    /* small controls removed (user requested) */
 
     /* gift card on right page — clickable flip */
     .gift-card-wrap{display:flex;align-items:center;justify-content:center;height:100%}
@@ -109,7 +108,7 @@
             </div>
           </div>
 
-          <div class="page right">
+          <div class="page right" id="rightPage">
             <div class="content-bg" aria-hidden="true"></div>
             <div class="overlay">
               <div class="gift-card-wrap">
@@ -141,13 +140,8 @@
         <div class="card-cover" id="cardCover" role="button" aria-label="Open card" tabindex="0">
           <!-- cover sprite PNG; stays visible after opening but becomes non-interactive -->
           <img class="cover-sprite" src="assets/cover.png" alt="Card cover">
-          <div class="title">Tap to open your card</div>
         </div>
 
-        <div class="controls">
-          <button class="btn" id="closeBtn">Close</button>
-          <button class="btn" id="resetFlipBtn">Reset flip</button>
-        </div>
       </div>
     </div>
   </div>
@@ -157,11 +151,32 @@
       const sceneRoot = document.getElementById('scene');
       const cardCover = document.getElementById('cardCover');
       const gift = document.getElementById('giftCard');
-      const closeBtn = document.getElementById('closeBtn');
-      const resetFlipBtn = document.getElementById('resetFlipBtn');
+      const leftPage = document.getElementById('leftPage');
+      const rightPage = document.getElementById('rightPage');
 
       // entrance
       requestAnimationFrame(()=> setTimeout(()=> sceneRoot.classList.add('ready'), 60));
+
+      // page state
+      let currentPage = 'right';
+      leftPage.classList.add('left'); leftPage.classList.remove('visible','hidden');
+      rightPage.classList.add('right');
+      // initialize visibility
+      leftPage.classList.add('hidden');
+      rightPage.classList.remove('hidden');
+      rightPage.classList.add('visible');
+
+      function showPage(name){
+        if(name === currentPage) return;
+        if(name === 'left'){
+          leftPage.classList.add('visible'); leftPage.classList.remove('hidden');
+          rightPage.classList.add('hidden'); rightPage.classList.remove('visible');
+        } else {
+          rightPage.classList.add('visible'); rightPage.classList.remove('hidden');
+          leftPage.classList.add('hidden'); leftPage.classList.remove('visible');
+        }
+        currentPage = name;
+      }
 
       function openCard(){
         // add open state (cover rotates)
@@ -169,22 +184,17 @@
         // mark as hidden for assistive tech
         cardCover.setAttribute('aria-hidden','true');
         // after the transform completes, freeze cover at last frame by making it non-interactive
-        // but keep it visible (do NOT remove it from layout)
         setTimeout(()=>{
           cardCover.style.pointerEvents = 'none';
-          // keep in DOM so it visually stays rotated (frozen at last frame)
           cardCover.dataset.frozen = 'true';
         }, 760);
       }
       function closeCard(){
-        // unfreeze and restore interactivity
         if(cardCover.dataset.frozen){
           cardCover.style.pointerEvents = '';
           delete cardCover.dataset.frozen;
         }
-        // remove open state (cover rotates back)
         sceneRoot.classList.remove('open');
-        // reveal for assistive tech
         cardCover.setAttribute('aria-hidden','false');
       }
 
@@ -198,12 +208,32 @@
       gift.addEventListener('click', toggleFlip);
       gift.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') toggleFlip(); });
 
-      closeBtn.addEventListener('click', closeCard);
-      resetFlipBtn.addEventListener('click', ()=>{ gift.classList.remove('flipped'); gift.setAttribute('aria-pressed','false'); });
+      // swipe handling for page switching on touch devices
+      let touchStartX = 0, touchStartY = 0;
+      const SWIPE_THRESHOLD = 40; // px
 
-      // touch optimization
-      let lastTouch = 0;
-      document.addEventListener('touchstart', function(e){ const t = Date.now(); if (t - lastTouch < 300) e.preventDefault(); lastTouch = t; }, {passive:false});
+      sceneRoot.addEventListener('touchstart', (e)=>{
+        const t = e.touches[0];
+        touchStartX = t.clientX; touchStartY = t.clientY;
+      }, {passive:true});
+
+      sceneRoot.addEventListener('touchend', (e)=>{
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartX;
+        const dy = t.clientY - touchStartY;
+        if(Math.abs(dx) < SWIPE_THRESHOLD) return; // not enough horizontal movement
+        if(Math.abs(dy) > Math.abs(dx) * 0.6) return; // mostly vertical
+        if(dx < 0){
+          // swipe left -> show left page
+          showPage('left');
+        } else {
+          // swipe right -> show right page
+          showPage('right');
+        }
+      }, {passive:true});
+
+      // expose closeCard for programmatic use (optional)
+      window._cardClose = closeCard;
     })();
   </script>
 </body>
