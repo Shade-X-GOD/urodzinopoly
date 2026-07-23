@@ -48,11 +48,50 @@
     .envelope:active{transform:translateX(-50%) scale(0.98)}
 
     /* modal popup */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:120}
-    .modal.show{display:flex}
-    .modal .panel{width:min(86vw,480px);max-height:86vh;border-radius:12px;overflow:hidden;transform:scale(0.96);transition:transform 260ms cubic-bezier(.2,.9,.2,1)}
-    .modal.show .panel{transform:scale(1)}
-    .modal .panel img{width:100%;height:auto;display:block}
+    .modal .panel{
+  width:min(86vw,480px);
+  border-radius:12px;
+  transform:scale(0.96);
+  transition:transform 260ms cubic-bezier(.2,.9,.2,1);
+  perspective:1200px;
+}
+
+.modal.show .panel{
+  transform:scale(1);
+}
+
+.flip-card{
+  position:relative;
+  width:100%;
+  transform-style:preserve-3d;
+  transition:transform .7s cubic-bezier(.2,.9,.2,1);
+  cursor:pointer;
+}
+
+.flip-card.flipped{
+  transform:rotateY(180deg);
+}
+
+.flip-face{
+  position:absolute;
+  inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
+.flip-front{
+  position:relative;
+}
+
+.flip-back{
+  transform:rotateY(180deg);
+}
+
+.flip-face img{
+  display:block;
+  width:100%;
+  border-radius:12px;
+}
 
     /* Cover open rotation */
     .scene.open .card-cover{transform:rotateY(-160deg)}
@@ -91,10 +130,18 @@
 
     <!-- modal that shows gift-front in center when envelope clicked -->
     <div class="modal" id="modal" role="dialog" aria-hidden="true">
-      <div class="panel" id="modalPanel">
+  <div class="panel" id="modalPanel">
+    <div class="flip-card" id="flipCard">
+      <div class="flip-face flip-front">
         <img src="assets/gift-front.jpeg" alt="Gift front">
       </div>
+
+      <div class="flip-face flip-back">
+        <img src="/assets/gift-back.png" alt="Gift back">
+      </div>
     </div>
+  </div>
+</div>
 
   </div>
 
@@ -105,6 +152,7 @@
       const envelope = document.getElementById('envelope');
       const modal = document.getElementById('modal');
       const modalPanel = document.getElementById('modalPanel');
+      const flipCard = document.getElementById('flipCard');
 
       // entrance
       requestAnimationFrame(()=> setTimeout(()=> scene.classList.add('ready'), 60));
@@ -142,12 +190,13 @@
         if(modal.classList.contains('show')) hideModal(); else showModal();
         envelope.setAttribute('aria-pressed', String(modal.classList.contains('show')));
       }
-
+      
+      flipCard.addEventListener('click', (e)=>{e.stopPropagation();flipCard.classList.toggle('flipped');});
       envelope.addEventListener('click', (e)=>{ e.stopPropagation(); toggleModal(); });
       envelope.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleModal(); } });
 
       // clicking modal backdrop closes it
-      modal.addEventListener('click', (e)=>{ if(e.target === modal || e.target === modalPanel) hideModal(); });
+      modal.addEventListener('click', (e)=>{if(e.target === modal)hideModal();});
 
       // swipe handling: left swipe opens, right swipe closes
       let touchStartX=0, touchStartY=0; const THRESH=30;
