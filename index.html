@@ -52,7 +52,7 @@
     .modal.show{display:flex}
     .modal .panel{width:min(86vw,480px);max-height:86vh;border-radius:12px;overflow:hidden;transform:scale(0.96);transition:transform 260ms cubic-bezier(.2,.9,.2,1)}
     .modal.show .panel{transform:scale(1)}
-    .modal .panel{width:min(86vw,480px);perspective:1200px}.flip-card{position:relative;width:100%;aspect-ratio:3/4;transform-style:preserve-3d;transition:transform .7s}.flip-card.flipped{transform:rotateY(180deg)}.flip-face{position:absolute;inset:0;backface-visibility:hidden}.flip-front{position:relative}.flip-back{transform:rotateY(180deg)}.flip-face img{width:100%;height:100%;object-fit:contain;display:block}
+    .modal .panel{width:min(86vw,480px);perspective:1200px}.flip-card{position:relative;width:100%;aspect-ratio:3/4;transform-style:preserve-3d;transition:transform .7s}.flip-card.flipped{transform:rotateY(180deg)}.flip-face{position:absolute;inset:0;backface-visibility:hidden}.flip-face{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;backface-visibility:hidden;-webkit-backface-visibility:hidden}.flip-front{transform:rotateY(0)}.flip-back{transform:rotateY(180deg)}.flip-face img{width:100%;height:100%;object-fit:contain;display:block}
 
     /* Cover open rotation */
     .scene.open .card-cover{transform:rotateY(-160deg)}
