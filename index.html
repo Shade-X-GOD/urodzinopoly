@@ -43,8 +43,52 @@
     .wishes .from{margin-top:12px;color:var(--muted);font-size:14px}
 
     /* envelope (small) */
-    .envelope{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;width:72px;height:48px;border-radius:8px;overflow:hidden;cursor:pointer;z-index:6;box-shadow:0 8px 20px rgba(0,0,0,0.12);transition:transform 280ms ease}
-    .envelope img{width:100%;height:100%;object-fit:cover;display:block}
+    .envelope{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+
+    transform:translateX(-50%);
+
+    width:auto;
+    height:70px;
+
+    padding:0;
+    margin:0;
+
+    border:none;
+    background:transparent;
+    outline:none;
+
+    cursor:pointer;
+    z-index:6;
+
+    box-shadow:none;
+    appearance:none;
+    -webkit-appearance:none;
+
+    transition:transform .25s ease;
+}
+
+.envelope img{
+    display:block;
+    height:100%;
+    width:auto;
+    object-fit:contain;
+    pointer-events:none;
+}
+
+.envelope:hover{
+    transform:translateX(-50%) scale(1.05);
+}
+
+.envelope:active{
+    transform:translateX(-50%) scale(.95);
+}
+
+.envelope:focus-visible{
+    outline:none;
+}
     .envelope:active{transform:translateX(-50%) scale(0.98)}
 
     /* modal popup */
@@ -59,7 +103,20 @@
     .card-cover[data-frozen='true']{pointer-events:none}
 
     @media (prefers-reduced-motion: reduce){.card-cover,.envelope,.modal .panel{transition:none}}
-    @media (max-width:420px){:root{--safe-padding:12px}.wishes h2{font-size:22px}.envelope{width:64px;height:44px}}
+    @media (max-width:420px){
+    :root{
+        --safe-padding:12px;
+    }
+
+    .wishes h2{
+        font-size:22px;
+    }
+
+    .envelope{
+        height:60px;
+        width:auto;
+    }
+}
   </style>
 </head>
 <body>
